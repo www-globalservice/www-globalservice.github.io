@@ -1,4 +1,3 @@
-
 (async () => {
     // === Configuración del Token Secreto ===
     // Este es el valor esperado del token, en texto plano.

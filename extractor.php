@@ -1,6 +1,6 @@
 <?php
 // ---- CONFIGURACIÓN INICIAL ----
-// 1. Indicar que la respuesta será en formato JSON
+// 1. Indicar que la respuesta será en formato JSON con codificación UTF-8
 header('Content-Type: application/json; charset=utf-8');
 // 2. Permitir que cualquier dominio (tu JS) pueda solicitar datos (CORS)
 header('Access-Control-Allow-Origin: *');
@@ -20,13 +20,14 @@ $response = [
 // 1. Validar que el parámetro 'i' exista
 if (!isset($_GET['i']) || empty($_GET['i'])) {
     $response['message'] = 'Acceso denegado, Key no valida';
-    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    // Se añade la bandera JSON_UNESCAPED_UNICODE para mostrar acentos correctamente en errores
+    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     exit();
 }
 
 $url = filter_var($_GET['i'], FILTER_SANITIZE_URL);
 // URL base para los enlaces extraídos de temporadas y capítulos
-$extractor_base_url = 'https://flysistem.fast-page.org/extractor.php?i=';
+$extractor_base_url = 'https://flysistem.fast-page.org/extractor.php?i=p';
 
 
 // 2. Obtener el contenido de la URL con cURL
@@ -40,7 +41,7 @@ curl_close($ch);
 
 if (!$htmlContent) {
     $response['message'] = 'No se pudo obtener el contenido de la URL.';
-    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     exit();
 }
 
@@ -54,7 +55,7 @@ $scriptNode = $xpath->query('//script[@id="__NEXT_DATA__"]')->item(0);
 
 if (!$scriptNode) {
     $response['message'] = 'No se encontró el bloque de datos JSON (__NEXT_DATA__). La estructura del sitio pudo haber cambiado.';
-    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     exit();
 }
 
@@ -62,7 +63,7 @@ $jsonData = json_decode($scriptNode->nodeValue);
 
 if (json_last_error() !== JSON_ERROR_NONE) {
     $response['message'] = 'Error al decodificar los datos JSON de la página.';
-    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     exit();
 }
 
@@ -133,7 +134,8 @@ $response['message'] = 'Datos extraídos correctamente.';
 $response['data'] = $extractedData;
 
 // Imprimir el array final como una cadena JSON
-echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+// ✨ LA CORRECCIÓN ESTÁ AQUÍ ✨
+echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
 // Limpiar errores de libxml del buffer
 libxml_clear_errors();

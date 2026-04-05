@@ -3,20 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Farmatodo POS - Sistema Profesional de Facturación</title>
+    <title>Farmatodo POS Ultra Secure | Sistema Fiscal</title>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* ==========================================================================
-           DESIGN SYSTEM & VARIABLES
-           ========================================================================== */
+        /* ========== DESIGN SYSTEM AVANZADO ========== */
         :root {
             --color-primary: #004b93;
             --color-primary-hover: #003a73;
             --color-success: #10b981;
             --color-success-hover: #059669;
             --color-danger: #ef4444;
-            --color-danger-hover: #dc2626;
+            --color-warning: #f59e0b;
             --color-background: #f1f5f9;
             --color-surface: #ffffff;
             --color-text-main: #0f172a;
@@ -27,985 +25,455 @@
             --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
             --radius-md: 12px;
             --radius-lg: 20px;
-            --transition-speed: 0.2s;
         }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
-            font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, sans-serif;
+            font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
             background: var(--color-background);
             color: var(--color-text-main);
             height: 100vh;
             overflow: hidden;
         }
-
-        /* ==========================================================================
-           LAYOUT PRINCIPAL
-           ========================================================================== */
-        .app-container {
-            display: flex;
-            height: 100%;
-            flex-wrap: wrap;
-        }
-
+        .app-container { display: flex; height: 100%; flex-wrap: wrap; }
         .control-panel {
-            flex: 1.2;
-            min-width: 320px;
-            background: var(--color-background);
-            overflow-y: auto;
-            padding: 24px;
-            border-right: 1px solid var(--color-border);
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
+            flex: 1.2; min-width: 320px; background: var(--color-background);
+            overflow-y: auto; padding: 24px; border-right: 1px solid var(--color-border);
+            display: flex; flex-direction: column; gap: 24px;
         }
-
         .preview-panel {
-            flex: 0.9;
-            min-width: 380px;
-            background: #e2e8f0;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            padding: 24px 16px;
-            overflow-y: auto;
-            position: relative;
+            flex: 0.9; min-width: 380px; background: #e2e8f0;
+            display: flex; justify-content: center; align-items: flex-start;
+            padding: 24px 16px; overflow-y: auto; position: relative;
         }
-
-        /* ==========================================================================
-           COMPONENTES UI (Tarjetas, Formularios, Botones)
-           ========================================================================== */
         .card {
-            background: var(--color-surface);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm);
-            padding: 24px;
+            background: var(--color-surface); border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm); padding: 24px;
             border: 1px solid var(--color-border);
-            transition: box-shadow var(--transition-speed);
+            transition: box-shadow 0.2s;
         }
-
         .card:hover { box-shadow: var(--shadow-md); }
-
         .card h2 {
-            font-size: 1.25rem;
-            margin-bottom: 1.5rem;
-            color: var(--color-primary);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 700;
-            letter-spacing: -0.025em;
+            font-size: 1.25rem; margin-bottom: 1.5rem; color: var(--color-primary);
+            display: flex; align-items: center; gap: 10px; font-weight: 700;
         }
-
-        .form-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 16px;
-            margin-bottom: 20px;
-            align-items: flex-end;
-        }
-
-        .form-field {
-            flex: 1;
-            min-width: 140px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        label {
-            font-weight: 600;
-            font-size: 0.85rem;
-            color: var(--color-text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
+        .form-group { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; align-items: flex-end; }
+        .form-field { flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 8px; }
+        label { font-weight: 600; font-size: 0.85rem; color: var(--color-text-muted); text-transform: uppercase; }
         input, select {
-            padding: 12px 16px;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--color-border);
-            font-size: 0.95rem;
-            background-color: #f8fafc;
-            transition: all var(--transition-speed);
+            padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--color-border);
+            font-size: 0.95rem; background-color: #f8fafc; transition: all 0.2s;
         }
-
-        input:focus, select:focus {
-            outline: none;
-            border-color: var(--color-primary);
-            background-color: var(--color-surface);
-            box-shadow: 0 0 0 4px rgba(0, 75, 147, 0.1);
-        }
-
+        input:focus, select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 4px rgba(0,75,147,0.1); }
         button {
-            padding: 12px 20px;
-            border-radius: var(--radius-md);
-            border: none;
-            font-weight: 600;
-            font-size: 0.95rem;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            justify-content: center;
-            transition: all var(--transition-speed);
+            padding: 12px 20px; border-radius: var(--radius-md); border: none;
+            font-weight: 600; font-size: 0.95rem; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 8px; justify-content: center;
+            transition: all 0.2s;
         }
-
         button.btn-primary { background: var(--color-primary); color: white; }
-        button.btn-primary:hover { background: var(--color-primary-hover); transform: translateY(-2px); box-shadow: var(--shadow-md); }
-
+        button.btn-primary:hover { background: var(--color-primary-hover); transform: translateY(-2px); }
         button.btn-danger { background: var(--color-danger); color: white; }
-        button.btn-danger:hover { background: var(--color-danger-hover); }
-
         button.btn-success { background: var(--color-success); color: white; }
-        button.btn-success:hover { background: var(--color-success-hover); }
-
         button.btn-outline { background: transparent; border: 2px solid var(--color-border); color: var(--color-text-main); }
-        button.btn-outline:hover { border-color: var(--color-primary); color: var(--color-primary); }
-
-        /* ==========================================================================
-           TABLAS Y LISTAS
-           ========================================================================== */
+        button.btn-warning { background: var(--color-warning); color: white; }
         .table-wrapper { overflow-x: auto; border-radius: var(--radius-md); border: 1px solid var(--color-border); }
         table { width: 100%; border-collapse: collapse; font-size: 0.9rem; background: var(--color-surface); }
         th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--color-border); }
-        th { background: #f8fafc; color: var(--color-text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.8rem; }
-        tr:last-child td { border-bottom: none; }
-        tr:hover td { background-color: #f1f5f9; }
-        
-        .actions i { margin: 0 8px; cursor: pointer; transition: color 0.2s; color: var(--color-text-muted); }
+        th { background: #f8fafc; color: var(--color-text-muted); font-weight: 600; }
+        .actions i { margin: 0 8px; cursor: pointer; color: var(--color-text-muted); }
         .actions i:hover { color: var(--color-primary); }
-        .actions i.fa-trash-alt:hover { color: var(--color-danger); }
-
-        .autocomplete-wrapper { position: relative; width: 100%; }
         .suggestions-list {
             position: absolute; top: calc(100% + 8px); left: 0; right: 0;
             background: var(--color-surface); border: 1px solid var(--color-border);
             border-radius: var(--radius-md); max-height: 250px; overflow-y: auto;
             z-index: 100; list-style: none; box-shadow: var(--shadow-lg);
         }
-        .suggestions-list li {
-            padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f1f5f9;
-            font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center;
-        }
-        .suggestions-list li:last-child { border-bottom: none; }
+        .suggestions-list li { padding: 12px 16px; cursor: pointer; display: flex; justify-content: space-between; }
         .suggestions-list li:hover { background: #f8fafc; color: var(--color-primary); }
-
         .factura-item {
             background: var(--color-surface); border: 1px solid var(--color-border);
             border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 10px;
             cursor: pointer; border-left: 4px solid var(--color-primary);
-            transition: all var(--transition-speed); font-size: 0.85rem;
+            transition: all 0.2s;
         }
-        .factura-item:hover { transform: translateX(4px); box-shadow: var(--shadow-sm); }
-
-        /* ==========================================================================
-           SISTEMA DE TOAST
-           ========================================================================== */
-        .toast-container {
-            position: fixed; bottom: 24px; right: 24px;
-            display: flex; flex-direction: column; gap: 10px; z-index: 9999;
-        }
-        .toast {
-            padding: 14px 24px; border-radius: var(--radius-md); color: white;
-            font-size: 0.95rem; font-weight: 500; display: flex; align-items: center; gap: 12px;
-            box-shadow: var(--shadow-lg); animation: slideIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
-            opacity: 0; transform: translateY(100%);
-        }
-        .toast.success { background: var(--color-success); }
-        .toast.error { background: var(--color-danger); }
-        .toast.info { background: var(--color-primary); }
-        .toast.fade-out { animation: fadeOut 0.3s forwards; }
-
-        @keyframes slideIn { to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeOut { to { opacity: 0; transform: translateY(20px); } }
-
-        /* ==========================================================================
-           SECCIÓN INTOCABLE: TICKET FISCAL Y MEDIA PRINT
-           ========================================================================== */
+        /* TICKET FISCAL INTOCABLE */
         .ticket {
-            width: 80mm; background: white; padding: 10px 8px; font-family: 'Courier New', Courier, monospace;
-            font-size: 11px; color: #000; box-shadow: 0 12px 28px rgba(0,0,0,0.2); border-radius: 4px;
+            width: 80mm; background: white; padding: 10px 8px;
+            font-family: 'Courier New', Courier, monospace; font-size: 11px;
+            color: #000; box-shadow: 0 12px 28px rgba(0,0,0,0.2); border-radius: 4px;
         }
         .ticket-center { text-align: center; }
-        .ticket-left { text-align: left; }
-        .ticket-right { text-align: right; }
         .divider { border-top: 1px dashed #222; margin: 6px 0; }
         .thick-divider { border-top: 2px solid #000; margin: 6px 0; }
         .items-table { width: 100%; border-collapse: collapse; }
-        .items-table td { border: none; padding: 2px 0; vertical-align: top; background: transparent; }
-        .items-table tr:hover td { background-color: transparent; }
+        .items-table td { border: none; padding: 2px 0; background: transparent; }
         .col-desc { width: 70%; }
         .col-price { width: 30%; text-align: right; }
         .totals-row { display: flex; justify-content: space-between; margin: 4px 0; }
         .total-final { font-weight: bold; font-size: 12px; }
-
-        @media print {
-            body * { visibility: hidden; }
-            .ticket, .ticket * { visibility: visible; }
-            .ticket { position: absolute; left: 0; top: 0; width: 80mm; margin: 0; box-shadow: none; }
-            @page { margin: 0; }
-        }
-
-        /* ==========================================================================
-           SEGURIDAD Y SINCRONIZACIÓN (SERVERLESS)
-           ========================================================================== */
+        @media print { body * { visibility: hidden; } .ticket, .ticket * { visibility: visible; } .ticket { position: absolute; left: 0; top: 0; width: 80mm; margin: 0; } @page { margin: 0; } }
+        /* MODAL SEGURIDAD */
         .modal-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(15, 23, 42, 0.95); z-index: 10000;
-            display: flex; justify-content: center; align-items: center;
-            backdrop-filter: blur(5px);
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 10000; transition: all 0.3s;
         }
-
-        .auth-card {
-            background: var(--color-surface); padding: 40px;
-            border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
-            width: 100%; max-width: 400px; text-align: center;
+        .modal-card {
+            background: white; border-radius: 32px; padding: 32px; max-width: 500px;
+            width: 90%; text-align: center; box-shadow: var(--shadow-lg);
+            border-top: 6px solid var(--color-primary);
         }
-
-        .auth-card h2 { color: var(--color-primary); margin-bottom: 20px; font-weight: 700; }
-        .auth-card p { color: var(--color-text-muted); margin-bottom: 24px; font-size: 0.95rem; line-height: 1.5; }
-
-        .sync-blocker {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(255, 255, 255, 0.8); z-index: 10001;
-            display: none; flex-direction: column; justify-content: center; align-items: center;
-            font-size: 1.25rem; font-weight: bold; color: var(--color-primary);
+        .toast-container {
+            position: fixed; bottom: 24px; right: 24px; display: flex;
+            flex-direction: column; gap: 10px; z-index: 9999;
         }
-
-        .spinner {
-            width: 50px; height: 50px; border: 4px solid var(--color-border);
-            border-top: 4px solid var(--color-primary); border-radius: 50%;
-            animation: spin 1s linear infinite; margin-bottom: 16px;
+        .toast {
+            padding: 14px 24px; border-radius: var(--radius-md); color: white;
+            font-weight: 500; display: flex; align-items: center; gap: 12px;
+            box-shadow: var(--shadow-lg); animation: slideIn 0.3s forwards;
         }
-
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        .indicator-dot {
-            display: inline-block; width: 10px; height: 10px;
-            border-radius: 50%; margin-right: 6px;
+        .toast.success { background: var(--color-success); }
+        .toast.error { background: var(--color-danger); }
+        .toast.info { background: var(--color-primary); }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
+        .badge-sync {
+            background: #fef3c7; color: #b45309; padding: 4px 12px; border-radius: 40px;
+            font-size: 0.7rem; font-weight: bold; display: inline-flex; align-items: center; gap: 6px;
         }
-        .indicator-dot.unsaved { background-color: var(--color-danger); box-shadow: 0 0 8px var(--color-danger); }
-        .indicator-dot.saved { background-color: var(--color-success); }
-
-        @media (max-width: 900px) {
-            .app-container { flex-direction: column; }
-            .control-panel, .preview-panel { width: 100%; flex: auto; height: auto; overflow-y: visible; }
-            body { overflow: auto; height: auto; }
-        }
+        @media (max-width: 900px) { .app-container { flex-direction: column; } body { overflow: auto; height: auto; } .control-panel, .preview-panel { width: 100%; } }
     </style>
 </head>
 <body>
-
-<div id="auth-modal" class="modal-overlay">
-    <div class="auth-card">
-        <h2><i class="fas fa-lock"></i> Acceso Restringido</h2>
-        <p>Por favor, inserte su Llave USB de Sistema (auth.json) para inicializar el terminal POS.</p>
-        <label for="auth-file" class="btn-primary" style="padding: 12px 24px; cursor: pointer; display: inline-flex;">
-            <i class="fas fa-key"></i> Cargar Llave USB
-        </label>
-        <input type="file" id="auth-file" accept=".json" style="display: none;">
-    </div>
-</div>
-
-<div id="sync-blocker" class="sync-blocker">
-    <div class="spinner"></div>
-    <span>Sincronizando... No cierre la ventana.</span>
-</div>
-
-<div class="app-container">
+<div class="app-container" id="mainApp" style="display: none;">
+    <!-- PANEL PRINCIPAL (se muestra solo tras autenticación) -->
     <div class="control-panel">
-        
         <div class="card">
-            <h2><i class="fas fa-boxes"></i> Gestión de Inventario</h2>
+            <h2><i class="fas fa-boxes"></i> Gestión de Inventario <span id="syncStatusBadge" class="badge-sync"><i class="fas fa-database"></i> Local</span></h2>
             <form id="product-form">
                 <input type="hidden" id="prod-id">
                 <div class="form-group">
-                    <div class="form-field">
-                        <label>Código SKU</label>
-                        <input type="text" id="prod-code" placeholder="Ej. 111277718" required autocomplete="off">
-                    </div>
-                    <div class="form-field" style="flex: 2;">
-                        <label>Descripción del Producto</label>
-                        <input type="text" id="prod-name" placeholder="Nombre comercial" required autocomplete="off">
-                    </div>
-                    <div class="form-field">
-                        <label>Precio (Bs)</label>
-                        <input type="number" id="prod-price" step="0.01" min="0.01" required>
-                    </div>
-                    <div class="form-field">
-                        <label>Impuesto</label>
-                        <select id="prod-tax"><option value="G">Gravado (G)</option><option value="E">Exento (E)</option></select>
-                    </div>
-                    <button type="submit" id="btn-save-prod" class="btn-primary" style="margin-bottom: 2px;"><i class="fas fa-save"></i> Guardar</button>
+                    <div class="form-field"><label>Código SKU</label><input type="text" id="prod-code" placeholder="Ej. 7591054001859" required autocomplete="off"></div>
+                    <div class="form-field" style="flex:2;"><label>Descripción</label><input type="text" id="prod-name" placeholder="Producto" required></div>
+                    <div class="form-field"><label>Precio (Bs)</label><input type="number" id="prod-price" step="0.01" min="0.01" required></div>
+                    <div class="form-field"><label>Impuesto</label><select id="prod-tax"><option value="G">Gravado (G)</option><option value="E">Exento (E)</option></select></div>
+                    <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Guardar</button>
                 </div>
             </form>
-            
-            <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: center; background: #f8fafc; padding: 12px; border-radius: var(--radius-md); border: 1px dashed var(--color-border);">
-                <button type="button" id="btn-sync-cloud" class="btn-primary" style="background: var(--color-primary);">
-                    <i class="fas fa-cloud-upload-alt"></i> Publicar Cambios
-                </button>
-                <div id="sync-status" style="font-size: 0.85rem; font-weight: 600; color: var(--color-text-muted);">
-                    <span class="indicator-dot saved" id="sync-dot"></span> Sincronizado
-                </div>
-                
-                <div style="margin-left: auto; display: flex; gap: 8px;">
-                    <button type="button" id="export-backup-btn" class="btn-outline"><i class="fas fa-download"></i> Backup Local</button>
-                </div>
+            <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+                <button type="button" id="export-backup-btn" class="btn-success"><i class="fas fa-cloud-download-alt"></i> Exportar Local</button>
+                <label for="import-backup-file" class="btn-outline" style="padding: 12px 20px; border-radius: var(--radius-md); cursor: pointer;"><i class="fas fa-cloud-upload-alt"></i> Importar JSON</label>
+                <input type="file" id="import-backup-file" accept=".json" style="display: none;">
+                <button type="button" id="publishToGithubBtn" class="btn-warning"><i class="fab fa-github"></i> Publicar Cambios en GitHub</button>
             </div>
-
-            <div class="table-wrapper">
-                <table id="product-table">
-                    <thead><tr><th>SKU</th><th>Producto</th><th>Precio (Bs)</th><th>Imp</th><th>Acciones</th></tr></thead>
-                    <tbody id="product-list"></tbody>
-                </table>
-            </div>
+            <div class="table-wrapper"><table id="product-table"><thead><tr><th>SKU</th><th>Producto</th><th>Precio (Bs)</th><th>Imp</th><th>Acciones</th></tr></thead><tbody id="product-list"></tbody></table></div>
         </div>
-
         <div class="card">
             <h2><i class="fas fa-cash-register"></i> Terminal POS</h2>
-            <div class="form-group">
-                <div class="form-field"><label>Cliente</label><input type="text" id="client-name" value="Consumidor Final" autocomplete="off"></div>
-                <div class="form-field"><label>RIF / CI</label><input type="text" id="client-rif" value="V-000000000" autocomplete="off"></div>
-                <div class="form-field"><label>Tasa IVA %</label><input type="number" id="tax-rate" value="12" step="0.1"></div>
-            </div>
-            
-            <div class="form-group" style="background: #f8fafc; padding: 16px; border-radius: var(--radius-md); border: 1px dashed var(--color-border);">
-                <div class="form-field" style="flex: 3;">
-                    <label>Lector / Buscador de Artículos</label>
-                    <div class="autocomplete-wrapper">
-                        <input type="text" id="product-search" placeholder="Escanea o escribe el código/nombre..." autocomplete="off">
-                        <ul id="suggestions-list" class="suggestions-list" style="display:none;"></ul>
-                    </div>
-                </div>
-                <div class="form-field"><label>Cant.</label><input type="number" id="invoice-qty" value="1" min="1"></div>
-                <button type="button" id="add-item-btn" class="btn-primary"><i class="fas fa-cart-plus"></i> Añadir</button>
-            </div>
-
-            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px;">
-                <button type="button" id="clear-invoice-btn" class="btn-danger"><i class="fas fa-ban"></i> Cancelar Venta</button>
-                <button type="button" id="new-invoice-btn" class="btn-outline" onclick="AppUI.clearCart('Nueva venta iniciada')"><i class="fas fa-file-invoice"></i> Nuevo Ticket</button>
-                <button type="button" id="print-btn" class="btn-success" style="margin-left: auto; padding: 12px 32px;"><i class="fas fa-print"></i> Emitir Factura</button>
-            </div>
+            <div class="form-group"><div class="form-field"><label>Cliente</label><input type="text" id="client-name" value="Consumidor Final"></div><div class="form-field"><label>RIF / CI</label><input type="text" id="client-rif" value="V-000000000"></div><div class="form-field"><label>Tasa IVA %</label><input type="number" id="tax-rate" value="12" step="0.1"></div></div>
+            <div class="form-group" style="background:#f8fafc; padding:16px; border-radius:var(--radius-md);"><div class="form-field" style="flex:3;"><label>Lector / Buscador</label><div class="autocomplete-wrapper"><input type="text" id="product-search" placeholder="Escanea o escribe SKU / nombre" autocomplete="off"><ul id="suggestions-list" class="suggestions-list" style="display:none;"></ul></div></div><div class="form-field"><label>Cant.</label><input type="number" id="invoice-qty" value="1" min="1"></div><button type="button" id="add-item-btn" class="btn-primary"><i class="fas fa-cart-plus"></i> Añadir</button></div>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;"><button type="button" id="clear-invoice-btn" class="btn-danger"><i class="fas fa-ban"></i> Cancelar Venta</button><button type="button" id="new-invoice-btn" class="btn-outline"><i class="fas fa-file-invoice"></i> Nuevo Ticket</button><button type="button" id="print-btn" class="btn-success" style="margin-left:auto;"><i class="fas fa-print"></i> Emitir Factura</button></div>
         </div>
-
-        <div class="card">
-            <h2><i class="fas fa-history"></i> Transacciones Recientes</h2>
-            <div id="historial-content" style="max-height: 250px; overflow-y: auto; padding-right: 8px;">
-                <div id="facturas-historial-list">Cargando transacciones...</div>
-            </div>
-        </div>
+        <div class="card"><h2><i class="fas fa-history"></i> Transacciones Recientes</h2><div id="historial-content" style="max-height:250px; overflow-y:auto;"><div id="facturas-historial-list">Cargando...</div></div></div>
     </div>
-
-    <div class="preview-panel">
-        <div id="ticket" class="ticket">
-            <div class="ticket-center">
-                <strong>SENIAT</strong><br>J-00020200-1<br>
-                <img id="logo-img" src="" alt="Logo Farmatodo" style="max-width: 70%; margin: 4px auto;" onerror="this.style.display='none'">
-                <div id="logo-placeholder" style="font-size:10px; font-weight:bold;">ESPERANDO LOGO</div>
-                <strong>FARMATODO, C.A</strong><br>
-                Av Los Guayabitos, CC Expreso Baruta<br>Nivel 5 Of Unica, Urb La Trinidad<br>(Sector Piedra Azul), Caracas.<br>
-                FARMACIA CEREZOS, TLF:0281-2780820<br>
-                CAJA 01
-            </div>
-            <div class="divider"></div>
-            <div class="ticket-left">
-                Información del Cliente<br>
-                Nombre del Cliente: <span id="t-client-name">Consumidor Final</span><br>
-                RIF/CI: <span id="t-client-rif">V-000000000</span>
-            </div>
-            <div class="divider"></div>
-            <div class="ticket-center"><strong>FACTURA</strong></div>
-            <div class="ticket-grid" style="display:flex; justify-content:space-between;">
-                <span>FACTURA: <span id="t-invoice-num">00000001</span></span>
-                <span>HORA: <span id="t-time">--:--</span></span>
-            </div>
-            <div class="ticket-left">FECHA: <span id="t-date">--/--/----</span></div>
-            <div class="divider"></div>
-            <table class="items-table"><tbody id="t-items"></tbody></table>
-            <div class="divider"></div>
-            <div class="totals-section">
-                <div class="totals-row"><span>BI G (<span id="tax-rate-display">12.00</span>%)</span><span>Bs <span id="t-bi">0,00</span></span></div>
-                <div class="totals-row"><span>IVA G (<span id="tax-rate-display2">12.00</span>%)</span><span>Bs <span id="t-iva">0,00</span></span></div>
-                <div class="thick-divider"></div>
-                <div class="totals-row total-final"><span>TOTAL</span><span>Bs <span id="t-total">0,00</span></span></div>
-                <div class="totals-row"><span>EFECTIVO</span><span>Bs <span id="t-efectivo">0,00</span></span></div>
-            </div>
-            <div class="divider"></div>
-            <div class="ticket-center">Gracias por su visita.<br>
-                <svg id="barcode" style="width:100%; height:35px; margin-top:5px;"></svg>
-            </div>
-        </div>
-        
-        <div style="position:fixed; bottom:20px; right:20px; background:white; border-radius:30px; padding:8px 16px; display:flex; gap:10px; align-items: center; box-shadow: var(--shadow-lg); z-index:99;">
-            <label for="logo-upload" style="font-size:0.85rem; cursor: pointer; font-weight: 600; color: var(--color-primary);"><i class="fas fa-image"></i> Cambiar Logo</label>
-            <input type="file" id="logo-upload" accept="image/*" style="display:none;">
-            <button id="clear-logo" class="btn-danger" style="padding: 4px 8px; border-radius: 50%;"><i class="fas fa-times"></i></button>
-        </div>
+    <div class="preview-panel"><div id="ticket" class="ticket"><div class="ticket-center"><strong>SENIAT</strong><br>J-00020200-1<br><img id="logo-img" src="" style="max-width:70%; margin:4px auto;" onerror="this.style.display='none'"><div id="logo-placeholder" style="font-size:10px; font-weight:bold;">FARMATODO</div><strong>FARMATODO, C.A</strong><br>Av Los Guayabitos, CC Expreso Baruta<br>Nivel 5 Of Unica, Urb La Trinidad<br>FARMACIA CEREZOS, TLF:0281-2780820<br>CAJA 01</div><div class="divider"></div><div class="ticket-left">Nombre: <span id="t-client-name">Consumidor Final</span><br>RIF/CI: <span id="t-client-rif">V-000000000</span></div><div class="divider"></div><div class="ticket-center"><strong>FACTURA</strong></div><div style="display:flex; justify-content:space-between;"><span>N°: <span id="t-invoice-num">00000001</span></span><span>HORA: <span id="t-time">--:--</span></span></div><div>FECHA: <span id="t-date">--/--/----</span></div><div class="divider"></div><table class="items-table"><tbody id="t-items"></tbody></table><div class="divider"></div><div class="totals-section"><div class="totals-row"><span>BI G (<span id="tax-rate-display">12.00</span>%)</span><span>Bs <span id="t-bi">0,00</span></span></div><div class="totals-row"><span>IVA G (<span id="tax-rate-display2">12.00</span>%)</span><span>Bs <span id="t-iva">0,00</span></span></div><div class="thick-divider"></div><div class="totals-row total-final"><span>TOTAL</span><span>Bs <span id="t-total">0,00</span></span></div><div class="totals-row"><span>EFECTIVO</span><span>Bs <span id="t-efectivo">0,00</span></span></div></div><div class="divider"></div><div class="ticket-center">Gracias por su visita.<br><svg id="barcode" style="width:100%; height:35px; margin-top:5px;"></svg></div></div>
+        <div style="position:fixed; bottom:20px; right:20px; background:white; border-radius:30px; padding:8px 16px; display:flex; gap:10px; box-shadow:var(--shadow-lg);"><label for="logo-upload" style="font-size:0.85rem; cursor:pointer;"><i class="fas fa-image"></i> Logo</label><input type="file" id="logo-upload" accept="image/*" style="display:none;"><button id="clear-logo" class="btn-danger" style="padding:4px 8px; border-radius:50%;"><i class="fas fa-times"></i></button></div>
     </div>
 </div>
-
 <div id="toast-container" class="toast-container"></div>
 
 <script>
-/**
- * Arquitectura POS Modular - ES6+
- * Integración Serverless (GitHub API) + Seguridad Client-Side
- */
-
-// --- Variables de Configuración de Entorno ---
-const ENV = {
-    SYSTEM_KEY: "CLAVE_AQUI", // Cambia esto por la clave que esperas en el auth.json
-    GITHUB_OWNER: "www-globalservice",
-    GITHUB_REPO: "FM",
-    GITHUB_FILE_PATH: "bd.json"
-};
-
-const Utils = {
-    formatCurrency: (val) => val.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-    escapeHtml: (str) => str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])),
-    generatePad: (num, size) => String(num).padStart(size, '0'),
-    
-    showToast: (message, type = 'info') => {
-        const container = document.getElementById('toast-container');
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        const icons = { success: 'fa-check-circle', error: 'fa-exclamation-triangle', info: 'fa-info-circle' };
-        toast.innerHTML = `<i class="fas ${icons[type]}"></i> <span>${message}</span>`;
-        container.appendChild(toast);
-        setTimeout(() => {
-            toast.classList.add('fade-out');
-            toast.addEventListener('animationend', () => toast.remove());
-        }, 3000);
-    },
-
-    encodeBase64: (str) => window.btoa(unescape(encodeURIComponent(str))),
-    decodeBase64: (str) => decodeURIComponent(escape(window.atob(str)))
-};
-
-// --- MÓDULO DE SEGURIDAD (Closure) ---
-const SecurityContext = (() => {
-    let _githubToken = null;
-    return {
-        authenticate: (authData) => {
-            if (authData.systemKey === ENV.SYSTEM_KEY && authData.githubToken) {
-                _githubToken = authData.githubToken;
-                return true;
-            }
-            return false;
-        },
-        getToken: () => {
-            if (!_githubToken) throw new Error("Sesión no autenticada.");
-            return _githubToken;
-        }
-    };
-})();
-
-// --- MÓDULO GITHUB API ---
-const GitHubAPI = {
-    currentSha: null,
-
-    getHeaders() {
-        return {
-            'Authorization': `Bearer ${SecurityContext.getToken()}`,
-            'Accept': 'application/vnd.github.v3+json'
+    (function() {
+        // ----------------------------- SECURITY & CONFIG -------------------------
+        const REQUIRED_ACCESS_KEY = "00TANGOECHOSOECHONOVEMBER1039";   // Clave fija del sistema (ofuscada)
+        let GITHUB_TOKEN = null;          // Se almacena solo en memoria luego de autenticar
+        let IS_AUTHENTICATED = false;
+        let CURRENT_GITHUB_SHA = null;    // SHA del archivo bd.json en GitHub
+        const REPO_OWNER = "www-globalservice";
+        const REPO_NAME = "FM";
+        const FILE_PATH = "bd.json";
+        const RAW_URL = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/${FILE_PATH}`;
+        const API_URL = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+        
+        // Estado global del POS (datos)
+        let POSData = {
+            products: [],
+            invoices: [],
+            config: { lastInvoiceNumber: 1, defaultTaxRate: 12, boxNumber: "01" }
         };
-    },
-
-    async fetchDatabase() {
-        const url = `https://api.github.com/repos/${ENV.GITHUB_OWNER}/${ENV.GITHUB_REPO}/contents/${ENV.GITHUB_FILE_PATH}?t=${Date.now()}`;
-        const response = await fetch(url, { headers: this.getHeaders() });
+        let currentInvoiceItems = [];
+        let selectedProductTemp = null;
         
-        if (!response.ok) throw new Error("Error obteniendo la base de datos de la nube.");
+        // Referencias DOM
+        let dom = {};
         
-        const data = await response.json();
-        this.currentSha = data.sha;
-        const decodedContent = Utils.decodeBase64(data.content);
-        return JSON.parse(decodedContent);
-    },
-
-    async checkConflict() {
-        const url = `https://api.github.com/repos/${ENV.GITHUB_OWNER}/${ENV.GITHUB_REPO}/contents/${ENV.GITHUB_FILE_PATH}?t=${Date.now()}`;
-        const response = await fetch(url, { headers: this.getHeaders() });
-        if (!response.ok) return false; 
-        const data = await response.json();
-        return data.sha !== this.currentSha;
-    },
-
-    async pushDatabase(jsonData) {
-        if (await this.checkConflict()) {
-            throw new Error("CONFLICTO DE VERSIÓN: La base de datos fue modificada por otro cajero. Refresque la página antes de publicar.");
-        }
-
-        const url = `https://api.github.com/repos/${ENV.GITHUB_OWNER}/${ENV.GITHUB_REPO}/contents/${ENV.GITHUB_FILE_PATH}`;
-        const contentB64 = Utils.encodeBase64(JSON.stringify(jsonData, null, 2));
-
-        const response = await fetch(url, {
-            method: 'PUT',
-            headers: this.getHeaders(),
-            body: JSON.stringify({
-                message: `Update POS DB - ${new Date().toISOString()}`,
-                content: contentB64,
-                sha: this.currentSha
-            })
-        });
-
-        if (!response.ok) throw new Error("Error de permisos o red al publicar en GitHub.");
-        const data = await response.json();
-        this.currentSha = data.content.sha;
-    }
-};
-
-// --- Manejo de Datos (Storage & Cache Local) ---
-const AppStorage = {
-    LOCAL_KEY: 'farmatodo_v3_cache',
-    LOGO_KEY: 'farmatodo_logo',
-    hasUnsavedChanges: false,
-    
-    getDefaultData: () => ({ products: [], invoices: [], config: { lastInvoiceNumber: 1, defaultTaxRate: 12, boxNumber: "01" } }),
-
-    initCloudData: async () => {
-        const cloudData = await GitHubAPI.fetchDatabase();
-        localStorage.setItem(AppStorage.LOCAL_KEY, JSON.stringify(cloudData));
-        AppStorage.hasUnsavedChanges = false;
-        return cloudData;
-    },
-
-    saveLocalCache: (data) => {
-        localStorage.setItem(AppStorage.LOCAL_KEY, JSON.stringify(data));
-        AppStorage.hasUnsavedChanges = true;
-        AppUI.updateSyncIndicator();
-    },
-
-    markAsSynced: () => {
-        AppStorage.hasUnsavedChanges = false;
-        AppUI.updateSyncIndicator();
-    },
-
-    saveLogo: (base64) => localStorage.setItem(AppStorage.LOGO_KEY, base64),
-    loadLogo: () => localStorage.getItem(AppStorage.LOGO_KEY),
-    clearLogo: () => localStorage.removeItem(AppStorage.LOGO_KEY)
-};
-
-// --- Lógica y Estado de la Aplicación ---
-const POSState = {
-    data: null,
-    currentInvoiceItems: [],
-    selectedProductTemp: null,
-
-    async initialize() {
-        this.data = await AppStorage.initCloudData();
-    },
-
-    addProduct(prod) {
-        const index = this.data.products.findIndex(p => p.id === prod.id);
-        if (index !== -1) this.data.products[index] = prod;
-        else this.data.products.push(prod);
-        AppStorage.saveLocalCache(this.data);
-    },
-
-    deleteProduct(id) {
-        this.data.products = this.data.products.filter(p => p.id !== id);
-        AppStorage.saveLocalCache(this.data);
-    },
-
-    addItemToCart(product, qty) {
-        const existing = this.currentInvoiceItems.find(i => i.id === product.id);
-        if (existing) existing.qty += qty;
-        else this.currentInvoiceItems.push({ ...product, qty });
-    },
-
-    saveInvoice(record) {
-        this.data.invoices.unshift(record);
-        this.data.config.lastInvoiceNumber++;
-        this.currentInvoiceItems = [];
-        AppStorage.saveLocalCache(this.data);
-    }
-};
-
-// --- Controladores de Interfaz de Usuario (UI) ---
-const AppUI = {
-    init() {
-        this.cacheDOM();
-        this.bindEvents();
-    },
-
-    cacheDOM() {
-        this.dom = {
-            productList: document.getElementById('product-list'),
-            form: document.getElementById('product-form'),
-            prodId: document.getElementById('prod-id'),
-            prodCode: document.getElementById('prod-code'),
-            prodName: document.getElementById('prod-name'),
-            prodPrice: document.getElementById('prod-price'),
-            prodTax: document.getElementById('prod-tax'),
-            btnSaveProd: document.getElementById('btn-save-prod'),
-            search: document.getElementById('product-search'),
-            suggestions: document.getElementById('suggestions-list'),
-            qty: document.getElementById('invoice-qty'),
-            historialList: document.getElementById('facturas-historial-list'),
-            logoImg: document.getElementById('logo-img'),
-            logoPlaceholder: document.getElementById('logo-placeholder'),
-            clientName: document.getElementById('client-name'),
-            clientRif: document.getElementById('client-rif'),
-            taxRate: document.getElementById('tax-rate'),
-            
-            authModal: document.getElementById('auth-modal'),
-            authFile: document.getElementById('auth-file'),
-            btnSync: document.getElementById('btn-sync-cloud'),
-            syncDot: document.getElementById('sync-dot'),
-            syncStatusText: document.getElementById('sync-status'),
-            syncBlocker: document.getElementById('sync-blocker')
-        };
-    },
-
-    bindEvents() {
-        this.dom.authFile.addEventListener('change', (e) => this.handleAuthUpload(e));
-        this.dom.btnSync.addEventListener('click', () => this.handleCloudSync());
-        this.dom.form.addEventListener('submit', e => { e.preventDefault(); this.handleSaveProduct(); });
-        this.dom.search.addEventListener('input', e => this.handleSearch(e.target.value));
-        
-        document.addEventListener('click', e => { if(!this.dom.search.contains(e.target)) this.dom.suggestions.style.display='none'; });
-        document.getElementById('add-item-btn').addEventListener('click', () => this.handleAddToCart());
-        document.getElementById('print-btn').addEventListener('click', () => this.handlePrintInvoice());
-        document.getElementById('clear-invoice-btn').addEventListener('click', () => this.clearCart());
-        document.getElementById('export-backup-btn').addEventListener('click', () => this.exportData());
-        
-        ['clientName', 'clientRif', 'taxRate'].forEach(id => {
-            this.dom[id].addEventListener('input', () => this.updateTicketPreview());
-        });
-
-        document.getElementById('logo-upload').addEventListener('change', e => this.handleLogoUpload(e));
-        document.getElementById('clear-logo').addEventListener('click', () => { AppStorage.clearLogo(); this.renderLogo(); });
-    },
-
-    async handleAuthUpload(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-            try {
-                const authData = JSON.parse(ev.target.result);
-                if (SecurityContext.authenticate(authData)) {
-                    this.dom.authModal.style.display = 'none';
-                    Utils.showToast("Autenticación Exitosa. Cargando base de datos...", "success");
-                    
-                    this.dom.syncBlocker.style.display = 'flex';
-                    this.dom.syncBlocker.querySelector('span').innerText = "Descargando datos desde GitHub...";
-                    
+        // Utils
+        const Utils = {
+            formatCurrency: (val) => val.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+            escapeHtml: (str) => String(str).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])),
+            generatePad: (num, size) => String(num).padStart(size, '0'),
+            showToast: (message, type = 'info') => {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                const icons = { success: 'fa-check-circle', error: 'fa-exclamation-triangle', info: 'fa-info-circle' };
+                toast.innerHTML = `<i class="fas ${icons[type]}"></i> <span>${message}</span>`;
+                container.appendChild(toast);
+                setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3500);
+            },
+            saveToLocalStorage: () => {
+                const dataToStore = { products: POSData.products, invoices: POSData.invoices, config: POSData.config };
+                localStorage.setItem('farmatodo_secure_v2', JSON.stringify(dataToStore));
+                document.getElementById('syncStatusBadge') && (document.getElementById('syncStatusBadge').innerHTML = '<i class="fas fa-database"></i> Local (sin publicar)');
+            },
+            loadFromLocalStorage: () => {
+                const raw = localStorage.getItem('farmatodo_secure_v2');
+                if (raw) {
                     try {
-                        await POSState.initialize();
-                        this.renderAll();
-                        this.setupClock();
-                        Utils.showToast("Sistema listo para operar.", "success");
-                    } catch (error) {
-                        Utils.showToast(error.message, "error");
-                        this.dom.authModal.style.display = 'flex'; 
-                    } finally {
-                        this.dom.syncBlocker.style.display = 'none';
-                    }
-                } else {
-                    Utils.showToast("Llave USB (auth.json) inválida.", "error");
+                        const parsed = JSON.parse(raw);
+                        POSData.products = parsed.products || [];
+                        POSData.invoices = parsed.invoices || [];
+                        POSData.config = parsed.config || { lastInvoiceNumber: 1, defaultTaxRate: 12, boxNumber: "01" };
+                    } catch(e) {}
                 }
-            } catch (err) {
-                Utils.showToast("El archivo proporcionado no tiene un formato válido.", "error");
             }
-            e.target.value = ''; 
         };
-        reader.readAsText(file);
-    },
-
-    async handleCloudSync() {
-        if (!AppStorage.hasUnsavedChanges) {
-            Utils.showToast("No hay cambios locales pendientes para publicar.", "info");
-            return;
+        
+        // --------------- GITHUB SYNC (CON TOKEN) ----------------
+        async function fetchRemoteDatabase() {
+            if (!GITHUB_TOKEN) throw new Error("Token no disponible");
+            const res = await fetch(API_URL, { headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, Accept: "application/vnd.github.v3+json" } });
+            if (res.status === 404) { // archivo no existe, lo crearemos luego
+                CURRENT_GITHUB_SHA = null;
+                return null;
+            }
+            if (!res.ok) throw new Error(`Error GitHub: ${res.status}`);
+            const data = await res.json();
+            CURRENT_GITHUB_SHA = data.sha;
+            const content = atob(data.content);
+            return JSON.parse(content);
         }
-
-        this.dom.syncBlocker.style.display = 'flex';
-        this.dom.syncBlocker.querySelector('span').innerText = "Publicando cambios en GitHub...";
-
-        try {
-            await GitHubAPI.pushDatabase(POSState.data);
-            AppStorage.markAsSynced();
-            Utils.showToast("Base de datos publicada exitosamente en GitHub.", "success");
-        } catch (error) {
-            Utils.showToast(error.message, "error");
-        } finally {
-            this.dom.syncBlocker.style.display = 'none';
+        
+        async function pushToGitHub() {
+            if (!GITHUB_TOKEN) throw new Error("Token de GitHub no autenticado");
+            const contentToPush = { products: POSData.products, invoices: POSData.invoices, config: POSData.config };
+            const jsonString = JSON.stringify(contentToPush, null, 2);
+            const encoded = btoa(unescape(encodeURIComponent(jsonString)));
+            const payload = { message: "Actualización POS Farmatodo", content: encoded, sha: CURRENT_GITHUB_SHA || undefined };
+            const res = await fetch(API_URL, { method: "PUT", headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+            if (!res.ok) { const err = await res.json(); throw new Error(`GitHub error: ${err.message || res.status}`); }
+            const result = await res.json();
+            CURRENT_GITHUB_SHA = result.content.sha;
+            Utils.showToast("✅ Publicado en GitHub exitosamente. Los cambios se verán reflejados en 2-3 minutos.", "success");
+            document.getElementById('syncStatusBadge') && (document.getElementById('syncStatusBadge').innerHTML = '<i class="fab fa-github"></i> Sincronizado');
+            return true;
         }
-    },
-
-    updateSyncIndicator() {
-        if (AppStorage.hasUnsavedChanges) {
-            this.dom.syncDot.className = 'indicator-dot unsaved';
-            this.dom.syncStatusText.innerHTML = '<span class="indicator-dot unsaved"></span> Cambios sin publicar';
-        } else {
-            this.dom.syncDot.className = 'indicator-dot saved';
-            this.dom.syncStatusText.innerHTML = '<span class="indicator-dot saved"></span> Sincronizado';
+        
+        // --------------- AUTENTICACIÓN CON ARCHIVO LLAVE (TESORERIA.JSON) ----------
+        function authenticateWithKeyFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const keyData = JSON.parse(e.target.result);
+                        if (keyData.accessKey === REQUIRED_ACCESS_KEY) {
+                            if (keyData.githubToken && typeof keyData.githubToken === "string" && keyData.githubToken.startsWith("github_pat_")) {
+                                GITHUB_TOKEN = keyData.githubToken;
+                                IS_AUTHENTICATED = true;
+                                resolve(true);
+                            } else reject("Token GitHub inválido o ausente en el archivo");
+                        } else reject("Clave de acceso incorrecta (accessKey inválida)");
+                    } catch(err) { reject("Archivo JSON corrupto o formato incorrecto"); }
+                };
+                reader.onerror = () => reject("Error al leer archivo");
+                reader.readAsText(file);
+            });
         }
-    },
-
-    renderAll() {
-        this.renderInventory();
-        this.renderHistorial();
-        this.renderLogo();
-        this.updateTicketPreview();
-    },
-
-    renderInventory() {
-        this.dom.productList.innerHTML = POSState.data.products.map(p => `
-            <tr>
-                <td><strong>${Utils.escapeHtml(p.id)}</strong></td>
-                <td>${Utils.escapeHtml(p.name)}</td>
-                <td>Bs ${Utils.formatCurrency(p.price)}</td>
-                <td><span style="background: #e2e8f0; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">${p.tax}</span></td>
-                <td class="actions">
-                    <i class="fas fa-edit" onclick="AppUI.loadProductToForm('${p.id}')" title="Editar"></i> 
-                    <i class="fas fa-trash-alt" onclick="AppUI.deleteProduct('${p.id}')" title="Eliminar"></i>
-                </td>
-            </tr>
-        `).join('');
-    },
-
-    renderHistorial() {
-        if (!POSState.data.invoices.length) {
-            this.dom.historialList.innerHTML = '<div style="padding: 10px; color: var(--color-text-muted);">No hay transacciones recientes.</div>';
-            return;
+        
+        // --------------- CARGA INICIAL: remoto + local ----------
+        async function initializeSystemAfterAuth() {
+            try {
+                // intentar cargar desde github remoto
+                const remoteData = await fetchRemoteDatabase();
+                if (remoteData && remoteData.products) {
+                    POSData.products = remoteData.products;
+                    POSData.invoices = remoteData.invoices || [];
+                    POSData.config = remoteData.config || { lastInvoiceNumber: 1, defaultTaxRate: 12, boxNumber: "01" };
+                    Utils.saveToLocalStorage();
+                    Utils.showToast("Base de datos sincronizada desde GitHub", "success");
+                } else {
+                    // Si no existe remoto, intentar cargar localStorage previo
+                    Utils.loadFromLocalStorage();
+                    if (!POSData.products.length) {
+                        // Datos demo iniciales robustos
+                        POSData.products = [
+                            { id: "7591054001859", name: "CEREAL FLIPS CHOCOLATE X 220 GR", price: 1699.27, tax: "G" },
+                            { id: "7591206003252", name: "SNACK DORITOS MEGA QUESO X 150 GR", price: 1683.84, tax: "G" },
+                            { id: "111211836", name: "BOLSA HIELO ARTICO CUBITO GRANDE", price: 1024.92, tax: "G" },
+                            { id: "7591357020405", name: "AZUCAR MONTALBAN REFINADA 1KG", price: 1028.18, tax: "G" }
+                        ];
+                        POSData.invoices = [];
+                        POSData.config = { lastInvoiceNumber: 1, defaultTaxRate: 12, boxNumber: "01" };
+                        Utils.saveToLocalStorage();
+                    }
+                }
+                if (POSData.config.lastInvoiceNumber === undefined) POSData.config.lastInvoiceNumber = 1;
+                currentInvoiceItems = [];
+                selectedProductTemp = null;
+                renderAllUI();
+                updateTicketPreview();
+                document.getElementById("mainApp").style.display = "flex";
+                Utils.showToast("Sistema Farmatodo POS activo", "success");
+            } catch (error) {
+                Utils.showToast("Error al cargar datos: " + error.message, "error");
+            }
         }
-        this.dom.historialList.innerHTML = POSState.data.invoices.slice(0, 20).map(f => `
-            <div class="factura-item">
-                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                    <strong>#${f.numero}</strong>
-                    <span style="color:var(--color-text-muted); font-size:0.75rem;">${f.hora}</span>
-                </div>
-                <div>${Utils.escapeHtml(f.cliente)}</div>
-                <div style="color:var(--color-primary); font-weight:bold; margin-top:4px;">Bs ${Utils.formatCurrency(f.total)}</div>
-            </div>
-        `).join('');
-    },
-
-    renderLogo() {
-        const saved = AppStorage.loadLogo();
-        if (saved) {
-            this.dom.logoImg.src = saved;
-            this.dom.logoImg.style.display = 'block';
-            this.dom.logoPlaceholder.style.display = 'none';
-        } else {
-            this.dom.logoImg.style.display = 'none';
-            this.dom.logoPlaceholder.style.display = 'block';
-        }
-    },
-
-    updateTicketPreview() {
-        const { currentInvoiceItems, data: { config } } = POSState;
         
-        document.getElementById('t-client-name').textContent = this.dom.clientName.value.toUpperCase() || 'CONSUMIDOR FINAL';
-        document.getElementById('t-client-rif').textContent = this.dom.clientRif.value.toUpperCase() || 'V-000000000';
-        
-        const invoiceNumStr = Utils.generatePad(config.lastInvoiceNumber, 8);
-        document.getElementById('t-invoice-num').textContent = invoiceNumStr;
-        
-        const taxRate = parseFloat(this.dom.taxRate.value) || 12;
-        document.getElementById('tax-rate-display').textContent = taxRate.toFixed(2);
-        document.getElementById('tax-rate-display2').textContent = taxRate.toFixed(2);
-        
-        let subtotalGravado = 0, subtotalExento = 0;
-        const tItemsBody = document.getElementById('t-items');
-        tItemsBody.innerHTML = '';
-        
-        currentInvoiceItems.forEach(item => {
-            const lineTotal = item.price * item.qty;
-            if (item.tax === 'G') subtotalGravado += lineTotal;
-            else subtotalExento += lineTotal;
-            
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td class="col-desc">|${item.id}|<br>${item.qty} x ${item.name} (${item.tax})</td><td class="col-price">Bs ${Utils.formatCurrency(lineTotal)}</td>`;
-            tItemsBody.appendChild(tr);
-        });
-        
-        const iva = subtotalGravado * (taxRate / 100);
-        const total = subtotalGravado + subtotalExento + iva;
-        
-        document.getElementById('t-bi').textContent = Utils.formatCurrency(subtotalGravado + subtotalExento);
-        document.getElementById('t-iva').textContent = Utils.formatCurrency(iva);
-        document.getElementById('t-total').textContent = Utils.formatCurrency(total);
-        document.getElementById('t-efectivo').textContent = Utils.formatCurrency(total);
-        
-        JsBarcode(document.getElementById('barcode'), invoiceNumStr, { format:"CODE128", width:2, height:35, displayValue:false, margin:0 });
-    },
-
-    setupClock() {
-        const updateTime = () => {
-            const now = new Date();
-            document.getElementById('t-date').textContent = now.toLocaleDateString('es-VE');
-            document.getElementById('t-time').textContent = now.toLocaleTimeString('es-VE', {hour:'2-digit', minute:'2-digit'});
-        };
-        updateTime();
-        setInterval(updateTime, 1000); 
-    },
-
-    handleSearch(term) {
-        term = term.trim().toLowerCase();
-        if (!term) { this.dom.suggestions.style.display = 'none'; return; }
-        
-        const filtered = POSState.data.products.filter(p => p.id.toLowerCase().includes(term) || p.name.toLowerCase().includes(term)).slice(0, 6);
-        
-        if (filtered.length) {
-            this.dom.suggestions.innerHTML = filtered.map(p => `
-                <li onclick="AppUI.selectSearchResult('${p.id}')">
-                    <span><strong>${p.id}</strong> - ${Utils.escapeHtml(p.name)}</span>
-                    <span style="font-weight:bold; color:var(--color-primary);">Bs ${Utils.formatCurrency(p.price)}</span>
-                </li>
+        // --------------- RENDER COMPLETO UI ----------
+        function renderInventory() {
+            if (!dom.productList) return;
+            dom.productList.innerHTML = POSData.products.map(p => `
+                <tr>
+                    <td><strong>${Utils.escapeHtml(p.id)}</strong></td>
+                    <td>${Utils.escapeHtml(p.name)}</td>
+                    <td>Bs ${Utils.formatCurrency(p.price)}</td>
+                    <td><span style="background:#e2e8f0; padding:2px 8px; border-radius:12px;">${p.tax}</span></td>
+                    <td class="actions"><i class="fas fa-edit" onclick="appController.loadProductToForm('${p.id}')"></i> <i class="fas fa-trash-alt" onclick="appController.deleteProduct('${p.id}')"></i></td>
+                </tr>
             `).join('');
-            this.dom.suggestions.style.display = 'block';
-        } else {
-            this.dom.suggestions.style.display = 'none';
-        }
-    },
-
-    selectSearchResult(id) {
-        const prod = POSState.data.products.find(p => p.id === id);
-        if (prod) {
-            this.dom.search.value = `${prod.id} - ${prod.name}`;
-            POSState.selectedProductTemp = prod;
-        }
-        this.dom.suggestions.style.display = 'none';
-    },
-
-    handleAddToCart() {
-        let product = POSState.selectedProductTemp;
-        
-        if (!product) {
-            const match = POSState.data.products.find(p => p.id === this.dom.search.value || p.name.toLowerCase() === this.dom.search.value.toLowerCase());
-            if (!match) { Utils.showToast("Debe seleccionar un producto válido de la lista", "error"); return; }
-            product = match;
         }
         
-        const qty = parseInt(this.dom.qty.value);
-        if (isNaN(qty) || qty <= 0) return;
-        
-        POSState.addItemToCart(product, qty);
-        
-        POSState.selectedProductTemp = null;
-        this.dom.search.value = '';
-        this.dom.qty.value = '1';
-        this.dom.search.focus();
-        
-        this.updateTicketPreview();
-        Utils.showToast("Artículo añadido al ticket", "success");
-    },
-
-    handlePrintInvoice() {
-        if (!POSState.currentInvoiceItems.length) {
-            Utils.showToast("El ticket está vacío. Agregue productos primero.", "error");
-            return;
+        function renderHistorial() {
+            if (!dom.historialList) return;
+            if (!POSData.invoices.length) { dom.historialList.innerHTML = '<div style="padding:10px;">No hay transacciones recientes.</div>'; return; }
+            dom.historialList.innerHTML = POSData.invoices.slice(0, 20).map(f => `<div class="factura-item"><div style="display:flex;justify-content:space-between;"><strong>#${f.numero}</strong><span>${f.hora}</span></div><div>${Utils.escapeHtml(f.cliente)}</div><div style="color:var(--color-primary); font-weight:bold;">Bs ${Utils.formatCurrency(f.total)}</div></div>`).join('');
         }
-
-        const now = new Date();
-        const taxRate = parseFloat(this.dom.taxRate.value) || 12;
-        const subtotal = POSState.currentInvoiceItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
         
-        const record = {
-            numero: Utils.generatePad(POSState.data.config.lastInvoiceNumber, 8),
-            fecha: now.toLocaleDateString('es-VE'),
-            hora: now.toLocaleTimeString('es-VE', {hour:'2-digit', minute:'2-digit'}),
-            cliente: this.dom.clientName.value.toUpperCase() || 'CONSUMIDOR FINAL',
-            rif: this.dom.clientRif.value.toUpperCase() || 'V-000000000',
-            total: subtotal * (1 + (taxRate / 100))
+        function updateTicketPreview() {
+            const clientNameElem = document.getElementById('t-client-name');
+            if (clientNameElem) clientNameElem.textContent = dom.clientName?.value.toUpperCase() || 'CONSUMIDOR FINAL';
+            document.getElementById('t-client-rif') && (document.getElementById('t-client-rif').textContent = dom.clientRif?.value.toUpperCase() || 'V-000000000');
+            const invNum = Utils.generatePad(POSData.config.lastInvoiceNumber, 8);
+            document.getElementById('t-invoice-num') && (document.getElementById('t-invoice-num').textContent = invNum);
+            const taxRate = parseFloat(dom.taxRate?.value || 12);
+            document.getElementById('tax-rate-display') && (document.getElementById('tax-rate-display').textContent = taxRate.toFixed(2));
+            document.getElementById('tax-rate-display2') && (document.getElementById('tax-rate-display2').textContent = taxRate.toFixed(2));
+            let subtotalGravado = 0, subtotalExento = 0;
+            const tBody = document.getElementById('t-items');
+            if (tBody) tBody.innerHTML = '';
+            currentInvoiceItems.forEach(item => {
+                const lineTotal = item.price * item.qty;
+                if (item.tax === 'G') subtotalGravado += lineTotal;
+                else subtotalExento += lineTotal;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td class="col-desc">|${item.id}|<br>${item.qty} x ${item.name} (${item.tax})</td><td class="col-price">Bs ${Utils.formatCurrency(lineTotal)}</td>`;
+                tBody.appendChild(tr);
+            });
+            const iva = subtotalGravado * (taxRate / 100);
+            const total = subtotalGravado + subtotalExento + iva;
+            document.getElementById('t-bi') && (document.getElementById('t-bi').textContent = Utils.formatCurrency(subtotalGravado + subtotalExento));
+            document.getElementById('t-iva') && (document.getElementById('t-iva').textContent = Utils.formatCurrency(iva));
+            document.getElementById('t-total') && (document.getElementById('t-total').textContent = Utils.formatCurrency(total));
+            document.getElementById('t-efectivo') && (document.getElementById('t-efectivo').textContent = Utils.formatCurrency(total));
+            JsBarcode(document.getElementById('barcode'), invNum, { format: "CODE128", width: 2, height: 35, displayValue: false, margin: 0 });
+        }
+        
+        function renderAllUI() { renderInventory(); renderHistorial(); renderLogo(); }
+        
+        function renderLogo() { const saved = localStorage.getItem('farmatodo_logo'); const img = document.getElementById('logo-img'); const placeholder = document.getElementById('logo-placeholder'); if(saved && img) { img.src = saved; img.style.display = 'block'; if(placeholder) placeholder.style.display = 'none'; } else { if(img) img.style.display = 'none'; if(placeholder) placeholder.style.display = 'block'; } }
+        
+        // --------------- CONTROLADOR GLOBAL ----------
+        const appController = {
+            loadProductToForm(id) { const prod = POSData.products.find(p => p.id === id); if(prod) { dom.prodId.value = prod.id; dom.prodCode.value = prod.id; dom.prodName.value = prod.name; dom.prodPrice.value = prod.price; dom.prodTax.value = prod.tax; dom.btnSaveProd.innerHTML = '<i class="fas fa-sync"></i> Actualizar'; } },
+            deleteProduct(id) { if(confirm(`¿Eliminar SKU: ${id}?`)) { POSData.products = POSData.products.filter(p => p.id !== id); Utils.saveToLocalStorage(); renderInventory(); Utils.showToast("Producto eliminado", "info"); } },
+            handleSaveProduct() {
+                const id = dom.prodCode.value.trim(); const originalId = dom.prodId.value;
+                if(POSData.products.find(p => p.id === id) && originalId !== id) { Utils.showToast("SKU ya existe", "error"); return; }
+                const newProd = { id, name: dom.prodName.value.trim().toUpperCase(), price: parseFloat(dom.prodPrice.value), tax: dom.prodTax.value };
+                const idx = POSData.products.findIndex(p => p.id === (originalId || id));
+                if(idx !== -1) POSData.products[idx] = newProd; else POSData.products.push(newProd);
+                Utils.saveToLocalStorage(); dom.productForm.reset(); dom.prodId.value = ''; dom.btnSaveProd.innerHTML = '<i class="fas fa-save"></i> Guardar'; renderInventory(); Utils.showToast("Inventario actualizado", "success");
+            },
+            addToCart() {
+                let product = selectedProductTemp;
+                if(!product) product = POSData.products.find(p => p.id === dom.search.value || p.name.toLowerCase() === dom.search.value.toLowerCase());
+                if(!product) { Utils.showToast("Seleccione un producto válido", "error"); return; }
+                const qty = parseInt(dom.qty.value); if(isNaN(qty) || qty<=0) return;
+                const existing = currentInvoiceItems.find(i => i.id === product.id);
+                if(existing) existing.qty += qty; else currentInvoiceItems.push({ ...product, qty });
+                selectedProductTemp = null; dom.search.value = ''; dom.qty.value = '1'; updateTicketPreview(); Utils.showToast("Artículo agregado", "success");
+            },
+            async printInvoice() {
+                if(!currentInvoiceItems.length) { Utils.showToast("Ticket vacío", "error"); return; }
+                const now = new Date(); const taxRate = parseFloat(dom.taxRate.value) || 12;
+                let subtotal = currentInvoiceItems.reduce((acc,i) => acc + (i.price * i.qty),0);
+                const totalFactura = subtotal * (1 + (taxRate/100));
+                const record = { numero: Utils.generatePad(POSData.config.lastInvoiceNumber, 8), fecha: now.toLocaleDateString('es-VE'), hora: now.toLocaleTimeString('es-VE', {hour:'2-digit', minute:'2-digit'}), cliente: dom.clientName.value.toUpperCase() || 'CONSUMIDOR FINAL', rif: dom.clientRif.value.toUpperCase(), total: totalFactura };
+                POSData.invoices.unshift(record);
+                POSData.config.lastInvoiceNumber++;
+                Utils.saveToLocalStorage();
+                window.print();
+                currentInvoiceItems = [];
+                updateTicketPreview();
+                renderHistorial();
+                Utils.showToast("Factura emitida", "success");
+            },
+            clearCart() { currentInvoiceItems = []; updateTicketPreview(); Utils.showToast("Venta cancelada", "info"); },
+            async publishToGithub() { if(!GITHUB_TOKEN) { Utils.showToast("Token no disponible, reinicie sesión", "error"); return; } try { await pushToGitHub(); Utils.saveToLocalStorage(); } catch(e) { Utils.showToast("Error al publicar: " + e.message, "error"); } },
+            handleLogoUpload(e) { const file = e.target.files[0]; if(file){ const reader = new FileReader(); reader.onload = ev => { localStorage.setItem('farmatodo_logo', ev.target.result); renderLogo(); Utils.showToast("Logo actualizado","success"); }; reader.readAsDataURL(file); } },
+            clearLogo() { localStorage.removeItem('farmatodo_logo'); renderLogo(); },
+            exportData() { const blob = new Blob([JSON.stringify({ products: POSData.products, invoices: POSData.invoices, config: POSData.config }, null,2)], {type:"application/json"}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `farmatodo_backup_${new Date().toISOString()}.json`; a.click(); URL.revokeObjectURL(a.href); },
+            importData(e) { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = ev => { try { const imported = JSON.parse(ev.target.result); if(imported.products) { POSData.products = imported.products; POSData.invoices = imported.invoices || []; POSData.config = imported.config || { lastInvoiceNumber:1 }; Utils.saveToLocalStorage(); renderAllUI(); updateTicketPreview(); Utils.showToast("Restauración exitosa","success"); } else throw new Error(); } catch(err) { Utils.showToast("Archivo inválido","error"); } }; reader.readAsText(file); }
         };
-
-        POSState.saveInvoice(record);
         
-        window.print();
-        this.updateTicketPreview();
-        this.renderHistorial();
-        Utils.showToast("Factura emitida e impresa exitosamente", "success");
-    },
-
-    clearCart(msg = 'Ticket cancelado') {
-        POSState.currentInvoiceItems = [];
-        this.updateTicketPreview();
-        Utils.showToast(msg, "info");
-    },
-
-    handleSaveProduct() {
-        const id = this.dom.prodCode.value.trim();
-        const originalId = this.dom.prodId.value;
-        const isEditing = originalId !== '' && originalId !== id;
-        
-        if (POSState.data.products.find(p => p.id === id) && originalId !== id) {
-            Utils.showToast("El SKU ya existe en el sistema", "error");
-            return;
+        // Vincular eventos y DOM después de autenticación
+        function bindEvents() {
+            dom.productForm.addEventListener('submit', e => { e.preventDefault(); appController.handleSaveProduct(); });
+            dom.addItemBtn.addEventListener('click', () => appController.addToCart());
+            dom.printBtn.addEventListener('click', () => appController.printInvoice());
+            dom.clearInvoiceBtn.addEventListener('click', () => appController.clearCart());
+            dom.newInvoiceBtn.addEventListener('click', () => { appController.clearCart(); Utils.showToast("Nuevo ticket listo", "info"); });
+            dom.exportBtn.addEventListener('click', () => appController.exportData());
+            dom.importFileInput.addEventListener('change', e => appController.importData(e));
+            dom.publishBtn.addEventListener('click', () => appController.publishToGithub());
+            dom.logoUpload.addEventListener('change', e => appController.handleLogoUpload(e));
+            dom.clearLogoBtn.addEventListener('click', () => appController.clearLogo());
+            dom.search.addEventListener('input', (e) => { const term = e.target.value.trim().toLowerCase(); if(!term){ dom.suggestions.style.display='none'; return; } const filtered = POSData.products.filter(p => p.id.includes(term) || p.name.toLowerCase().includes(term)).slice(0,6); if(filtered.length){ dom.suggestions.innerHTML = filtered.map(p => `<li onclick="window.selectSearchResult('${p.id}')"><span><strong>${p.id}</strong> - ${Utils.escapeHtml(p.name)}</span><span>Bs ${Utils.formatCurrency(p.price)}</span></li>`).join(''); dom.suggestions.style.display='block'; } else dom.suggestions.style.display='none'; });
+            window.selectSearchResult = (id) => { const prod = POSData.products.find(p => p.id === id); if(prod){ dom.search.value = `${prod.id} - ${prod.name}`; selectedProductTemp = prod; } dom.suggestions.style.display='none'; };
+            document.addEventListener('click', (e) => { if(!dom.search.contains(e.target)) dom.suggestions.style.display='none'; });
+            dom.clientName.addEventListener('input', () => updateTicketPreview());
+            dom.clientRif.addEventListener('input', () => updateTicketPreview());
+            dom.taxRate.addEventListener('input', () => updateTicketPreview());
+            setInterval(() => { const now = new Date(); document.getElementById('t-date') && (document.getElementById('t-date').textContent = now.toLocaleDateString('es-VE')); document.getElementById('t-time') && (document.getElementById('t-time').textContent = now.toLocaleTimeString('es-VE', {hour:'2-digit', minute:'2-digit'})); }, 1000);
         }
-
-        const newProd = {
-            id,
-            name: this.dom.prodName.value.trim().toUpperCase(),
-            price: parseFloat(this.dom.prodPrice.value),
-            tax: this.dom.prodTax.value,
-            stockMin: 0
-        };
-
-        POSState.addProduct(newProd);
         
-        this.dom.form.reset();
-        this.dom.prodId.value = '';
-        this.dom.btnSaveProd.innerHTML = '<i class="fas fa-save"></i> Guardar';
+        // Inicializar módulo de autenticación
+        function showAuthModal() {
+            const modalDiv = document.createElement('div'); modalDiv.className = 'modal-overlay'; modalDiv.id = 'authModal';
+            modalDiv.innerHTML = `<div class="modal-card"><i class="fas fa-usb" style="font-size:48px; color:var(--color-primary);"></i><h2 style="margin:16px 0">🔐 Autenticación requerida</h2><p>Por favor, cargue el archivo de llave USB (TESORERIA.json)</p><input type="file" id="keyFileInput" accept=".json" style="margin:20px 0; padding:10px;"><br><button id="submitAuthBtn" class="btn-primary" style="width:100%"><i class="fas fa-key"></i> Validar acceso</button><p style="margin-top:20px; font-size:12px; color:#64748b;">Sistema Corporativo Farmatodo - POS Fiscal</p></div>`;
+            document.body.appendChild(modalDiv);
+            const fileInput = document.getElementById('keyFileInput');
+            const submitBtn = document.getElementById('submitAuthBtn');
+            submitBtn.onclick = async () => { if(!fileInput.files[0]) { alert("Seleccione el archivo"); return; } try { await authenticateWithKeyFile(fileInput.files[0]); modalDiv.remove(); await initializeSystemAfterAuth(); } catch(err) { alert("Error: " + err); } };
+        }
         
-        this.renderInventory();
-        Utils.showToast("Inventario actualizado", "success");
-    },
-
-    loadProductToForm(id) {
-        const prod = POSState.data.products.find(p => p.id === id);
-        if (prod) {
-            this.dom.prodId.value = prod.id;
-            this.dom.prodCode.value = prod.id;
-            this.dom.prodName.value = prod.name;
-            this.dom.prodPrice.value = prod.price;
-            this.dom.prodTax.value = prod.tax;
-            this.dom.btnSaveProd.innerHTML = '<i class="fas fa-sync"></i> Actualizar';
-            this.dom.prodCode.focus();
-        }
-    },
-
-    deleteProduct(id) {
-        if (confirm(`¿Está seguro de eliminar el producto SKU: ${id}?`)) {
-            POSState.deleteProduct(id);
-            this.renderInventory();
-            Utils.showToast("Producto eliminado del sistema", "info");
-        }
-    },
-
-    handleLogoUpload(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = ev => {
-                AppStorage.saveLogo(ev.target.result);
-                this.renderLogo();
-                Utils.showToast("Logotipo actualizado", "success");
+        window.onload = () => { showAuthModal(); };
+        
+        // Exponer referencias cuando se carga el DOM principal
+        setTimeout(() => {
+            dom = {
+                productList: document.getElementById('product-list'), productForm: document.getElementById('product-form'), prodId: document.getElementById('prod-id'),
+                prodCode: document.getElementById('prod-code'), prodName: document.getElementById('prod-name'), prodPrice: document.getElementById('prod-price'),
+                prodTax: document.getElementById('prod-tax'), btnSaveProd: document.getElementById('btn-save-prod'), search: document.getElementById('product-search'),
+                suggestions: document.getElementById('suggestions-list'), qty: document.getElementById('invoice-qty'), historialList: document.getElementById('facturas-historial-list'),
+                clientName: document.getElementById('client-name'), clientRif: document.getElementById('client-rif'), taxRate: document.getElementById('tax-rate'),
+                addItemBtn: document.getElementById('add-item-btn'), printBtn: document.getElementById('print-btn'), clearInvoiceBtn: document.getElementById('clear-invoice-btn'),
+                newInvoiceBtn: document.getElementById('new-invoice-btn'), exportBtn: document.getElementById('export-backup-btn'), importFileInput: document.getElementById('import-backup-file'),
+                publishBtn: document.getElementById('publishToGithubBtn'), logoUpload: document.getElementById('logo-upload'), clearLogoBtn: document.getElementById('clear-logo')
             };
-            reader.readAsDataURL(file);
-        }
-    },
-
-    exportData() {
-        const blob = new Blob([JSON.stringify(POSState.data, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `farmatodo_backup_local_${new Date().toISOString().slice(0, 10)}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        Utils.showToast("Backup local exportado", "success");
-    }
-};
-
-// --- Iniciar Aplicación ---
-document.addEventListener('DOMContentLoaded', () => AppUI.init());
+            if(dom.productForm) bindEvents();
+        }, 100);
+    })();
 </script>
 </body>
 </html>

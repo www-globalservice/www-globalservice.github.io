@@ -2,12 +2,14 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; connect-src 'self' https://api.github.com; img-src 'self' data:;">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https:; connect-src 'self' https://api.github.com https://www-globalservice.github.io https://raw.githubusercontent.com;">
     
-    <title>Farmatodo POS - Sistema Profesional de Facturación</title>
+    <title>Farmatodo POS - Sistema Profesional Serverless</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
     <style>
         /* ==========================================================================
            DESIGN SYSTEM & VARIABLES
@@ -17,6 +19,7 @@
             --color-primary-hover: #003a73;
             --color-success: #10b981;
             --color-success-hover: #059669;
+            --color-warning: #f59e0b;
             --color-danger: #ef4444;
             --color-danger-hover: #dc2626;
             --color-background: #f1f5f9;
@@ -32,7 +35,8 @@
             --transition-speed: 0.2s;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; } /* Prevención de selección de texto */
+        input, textarea, select { user-select: auto; } /* Permitir selección solo en inputs */
 
         body {
             font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, sans-serif;
@@ -40,175 +44,193 @@
             color: var(--color-text-main);
             height: 100vh;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
         /* ==========================================================================
-           PANTALLA DE BLOQUEO DE SEGURIDAD (FASE 1)
+           PANTALLA DE SEGURIDAD (LLAVE USB)
            ========================================================================== */
-        #lock-screen {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px);
-            display: flex; justify-content: center; align-items: center;
-            z-index: 10000; flex-direction: column;
+        #auth-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            z-index: 99999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+        .auth-box {
+            background: var(--color-surface);
+            padding: 40px;
+            border-radius: var(--radius-lg);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            max-width: 450px;
+            width: 90%;
+            border: 2px solid var(--color-primary);
+        }
+        .auth-box i { font-size: 3rem; color: var(--color-primary); margin-bottom: 20px; }
+        .auth-box h2 { margin-bottom: 15px; color: var(--color-text-main); }
+        .auth-box p { color: var(--color-text-muted); margin-bottom: 25px; font-size: 0.95rem; }
+        .file-upload-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            cursor: pointer;
+        }
+        .file-upload-wrapper input[type=file] {
+            font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer;
         }
 
-        .auth-card {
-            background: var(--color-surface); padding: 40px; border-radius: var(--radius-lg);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); width: 100%; max-width: 450px;
-            text-align: center; border: 2px solid var(--color-primary);
+        /* ==========================================================================
+           BARRA DE ESTADO DE SINCRONIZACIÓN
+           ========================================================================== */
+        .sync-bar {
+            background: var(--color-surface);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--color-border);
+            box-shadow: var(--shadow-sm);
+            z-index: 10;
         }
-
-        .auth-card h2 { color: var(--color-primary); margin-bottom: 20px; display: flex; flex-direction: column; align-items: center; gap: 15px; font-size: 1.5rem; }
-        .auth-card h2 i { font-size: 3rem; color: var(--color-primary); }
-        .auth-card p { color: var(--color-text-muted); margin-bottom: 30px; font-size: 0.95rem; line-height: 1.5; }
+        .sync-status { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 0.9rem; }
+        .status-indicator { width: 10px; height: 10px; border-radius: 50%; }
+        .status-synced { background: var(--color-success); box-shadow: 0 0 8px var(--color-success); }
+        .status-unsynced { background: var(--color-warning); box-shadow: 0 0 8px var(--color-warning); animation: pulse 2s infinite; }
         
-        .file-upload-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; margin-bottom: 20px; }
-        .file-upload-wrapper input[type=file] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%; }
-        .btn-upload { display: flex; align-items: center; justify-content: center; width: 100%; padding: 16px; background: #f8fafc; border: 2px dashed var(--color-border); border-radius: var(--radius-md); color: var(--color-text-main); font-weight: 600; cursor: pointer; transition: all 0.3s; gap: 10px; }
-        .file-upload-wrapper:hover .btn-upload { border-color: var(--color-primary); background: rgba(0, 75, 147, 0.05); }
-
-        .repo-config { display: flex; gap: 10px; margin-bottom: 20px; }
-        .repo-config input { flex: 1; padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border); font-size: 0.9rem; text-align: center; }
-
-        /* ==========================================================================
-           LAYOUT PRINCIPAL (Oculto inicialmente)
-           ========================================================================== */
-        .app-container { display: none; height: 100%; flex-wrap: wrap; }
-        .control-panel { flex: 1.2; min-width: 320px; background: var(--color-background); overflow-y: auto; padding: 24px; border-right: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 24px; }
-        .preview-panel { flex: 0.9; min-width: 380px; background: #e2e8f0; display: flex; justify-content: center; align-items: flex-start; padding: 24px 16px; overflow-y: auto; position: relative; }
-
-        /* Botón Flotante Sincronización Nube */
-        .float-sync-btn {
-            position: fixed; bottom: 30px; left: 30px; padding: 14px 24px;
-            background: var(--color-primary); color: white; border-radius: 30px;
-            border: none; font-weight: bold; font-size: 1rem; cursor: pointer;
-            box-shadow: var(--shadow-lg); display: none; align-items: center; gap: 10px;
-            z-index: 100; transition: all 0.3s;
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
         }
-        .float-sync-btn:hover:not(:disabled) { background: var(--color-primary-hover); transform: translateY(-3px); }
-        .float-sync-btn:disabled { background: var(--color-text-muted); cursor: not-allowed; opacity: 0.8; }
-        .dirty-dot { position: absolute; top: -5px; right: -5px; width: 14px; height: 14px; background: var(--color-danger); border-radius: 50%; display: none; box-shadow: 0 0 0 2px white; }
 
         /* ==========================================================================
-           COMPONENTES UI (Tarjetas, Formularios, Botones)
+           LAYOUT PRINCIPAL
            ========================================================================== */
-        .card { background: var(--color-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: 24px; border: 1px solid var(--color-border); transition: box-shadow var(--transition-speed); }
-        .card:hover { box-shadow: var(--shadow-md); }
-        .card h2 { font-size: 1.25rem; margin-bottom: 1.5rem; color: var(--color-primary); display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -0.025em; }
+        .app-content { display: flex; flex: 1; overflow: hidden; }
+        .control-panel {
+            flex: 1.2; min-width: 320px; background: var(--color-background);
+            overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 24px;
+        }
+        .preview-panel {
+            flex: 0.9; min-width: 380px; background: #e2e8f0; display: flex;
+            justify-content: center; align-items: flex-start; padding: 24px 16px; overflow-y: auto;
+            border-left: 1px solid var(--color-border);
+        }
+
+        /* ==========================================================================
+           COMPONENTES UI
+           ========================================================================== */
+        .card { background: var(--color-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: 24px; border: 1px solid var(--color-border); }
+        .card h2 { font-size: 1.25rem; margin-bottom: 1.5rem; color: var(--color-primary); display: flex; align-items: center; gap: 10px; font-weight: 700; }
+        
         .form-group { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; align-items: flex-end; }
         .form-field { flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 8px; }
-        
-        label { font-weight: 600; font-size: 0.85rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-        input, select { padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--color-border); font-size: 0.95rem; background-color: #f8fafc; transition: all var(--transition-speed); }
-        input:focus, select:focus { outline: none; border-color: var(--color-primary); background-color: var(--color-surface); box-shadow: 0 0 0 4px rgba(0, 75, 147, 0.1); }
+        label { font-weight: 600; font-size: 0.85rem; color: var(--color-text-muted); text-transform: uppercase; }
+        input, select { padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--color-border); font-size: 0.95rem; background: #f8fafc; transition: 0.2s; }
+        input:focus, select:focus { outline: none; border-color: var(--color-primary); background: var(--color-surface); box-shadow: 0 0 0 4px rgba(0, 75, 147, 0.1); }
 
-        button { padding: 12px 20px; border-radius: var(--radius-md); border: none; font-weight: 600; font-size: 0.95rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; justify-content: center; transition: all var(--transition-speed); }
-        button.btn-primary { background: var(--color-primary); color: white; }
-        button.btn-primary:hover { background: var(--color-primary-hover); transform: translateY(-2px); box-shadow: var(--shadow-md); }
-        button.btn-danger { background: var(--color-danger); color: white; }
-        button.btn-danger:hover { background: var(--color-danger-hover); }
-        button.btn-success { background: var(--color-success); color: white; }
-        button.btn-success:hover { background: var(--color-success-hover); }
-        button.btn-outline { background: transparent; border: 2px solid var(--color-border); color: var(--color-text-main); }
-        button.btn-outline:hover { border-color: var(--color-primary); color: var(--color-primary); }
+        button { padding: 12px 20px; border-radius: var(--radius-md); border: none; font-weight: 600; font-size: 0.95rem; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; justify-content: center; transition: 0.2s; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-primary { background: var(--color-primary); color: white; }
+        .btn-primary:hover:not(:disabled) { background: var(--color-primary-hover); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .btn-danger { background: var(--color-danger); color: white; }
+        .btn-success { background: var(--color-success); color: white; }
+        .btn-warning { background: var(--color-warning); color: white; }
+        .btn-outline { background: transparent; border: 2px solid var(--color-border); color: var(--color-text-main); }
+        .btn-outline:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
 
-        /* ==========================================================================
-           TABLAS Y LISTAS
-           ========================================================================== */
-        .table-wrapper { overflow-x: auto; border-radius: var(--radius-md); border: 1px solid var(--color-border); }
         table { width: 100%; border-collapse: collapse; font-size: 0.9rem; background: var(--color-surface); }
         th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--color-border); }
         th { background: #f8fafc; color: var(--color-text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.8rem; }
-        tr:last-child td { border-bottom: none; }
         tr:hover td { background-color: #f1f5f9; }
-        .actions i { margin: 0 8px; cursor: pointer; transition: color 0.2s; color: var(--color-text-muted); }
+        .actions i { margin: 0 8px; cursor: pointer; color: var(--color-text-muted); transition: 0.2s; }
         .actions i:hover { color: var(--color-primary); }
         .actions i.fa-trash-alt:hover { color: var(--color-danger); }
 
+        /* Autocompletado */
         .autocomplete-wrapper { position: relative; width: 100%; }
-        .suggestions-list { position: absolute; top: calc(100% + 8px); left: 0; right: 0; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); max-height: 250px; overflow-y: auto; z-index: 100; list-style: none; box-shadow: var(--shadow-lg); }
-        .suggestions-list li { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; }
+        .suggestions-list { position: absolute; top: calc(100% + 8px); left: 0; right: 0; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); max-height: 250px; overflow-y: auto; z-index: 100; list-style: none; box-shadow: var(--shadow-lg); display: none; }
+        .suggestions-list li { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; display: flex; justify-content: space-between; }
         .suggestions-list li:hover { background: #f8fafc; color: var(--color-primary); }
 
-        .factura-item { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 10px; cursor: pointer; border-left: 4px solid var(--color-primary); transition: all var(--transition-speed); font-size: 0.85rem; }
-        .factura-item:hover { transform: translateX(4px); box-shadow: var(--shadow-sm); }
+        /* Historial */
+        .factura-item { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 10px; border-left: 4px solid var(--color-primary); font-size: 0.85rem; }
+
+        /* Notificaciones (Toast) */
+        .toast-container { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 10px; z-index: 9999; }
+        .toast { padding: 14px 24px; border-radius: var(--radius-md); color: white; font-size: 0.95rem; font-weight: 500; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-lg); animation: slideIn 0.3s forwards; }
+        .toast.success { background: var(--color-success); } .toast.error { background: var(--color-danger); } .toast.info { background: var(--color-primary); }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } }
 
         /* ==========================================================================
-           SISTEMA DE TOAST
-           ========================================================================== */
-        .toast-container { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 10px; z-index: 10001; }
-        .toast { padding: 14px 24px; border-radius: var(--radius-md); color: white; font-size: 0.95rem; font-weight: 500; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-lg); animation: slideIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards; opacity: 0; transform: translateY(100%); }
-        .toast.success { background: var(--color-success); }
-        .toast.error { background: var(--color-danger); }
-        .toast.info { background: var(--color-primary); }
-        .toast.fade-out { animation: fadeOut 0.3s forwards; }
-
-        @keyframes slideIn { to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeOut { to { opacity: 0; transform: translateY(20px); } }
-
-        /* ==========================================================================
-           TICKET FISCAL (Impresión)
+           TICKET FISCAL (@media print)
            ========================================================================== */
         .ticket { width: 80mm; background: white; padding: 10px 8px; font-family: 'Courier New', Courier, monospace; font-size: 11px; color: #000; box-shadow: 0 12px 28px rgba(0,0,0,0.2); border-radius: 4px; }
-        .ticket-center { text-align: center; } .ticket-left { text-align: left; } .ticket-right { text-align: right; }
+        .ticket-center { text-align: center; } .ticket-left { text-align: left; }
         .divider { border-top: 1px dashed #222; margin: 6px 0; } .thick-divider { border-top: 2px solid #000; margin: 6px 0; }
-        .items-table { width: 100%; border-collapse: collapse; } .items-table td { border: none; padding: 2px 0; vertical-align: top; background: transparent; }
+        .items-table { width: 100%; border-collapse: collapse; } .items-table td { border: none; padding: 2px 0; vertical-align: top; }
         .col-desc { width: 70%; } .col-price { width: 30%; text-align: right; }
         .totals-row { display: flex; justify-content: space-between; margin: 4px 0; } .total-final { font-weight: bold; font-size: 12px; }
 
-        @media print { body * { visibility: hidden; } .ticket, .ticket * { visibility: visible; } .ticket { position: absolute; left: 0; top: 0; width: 80mm; margin: 0; box-shadow: none; } @page { margin: 0; } }
+        @media print {
+            body * { visibility: hidden; }
+            .ticket, .ticket * { visibility: visible; }
+            .ticket { position: absolute; left: 0; top: 0; width: 80mm; margin: 0; box-shadow: none; }
+            @page { margin: 0; }
+        }
     </style>
 </head>
 <body>
 
-<div id="lock-screen">
-    <div class="auth-card">
-        <h2><i class="fas fa-shield-alt"></i> Control de Acceso</h2>
-        <p>El sistema POS ha sido bloqueado por seguridad. Inserte su <strong>Llave de Tesorería (JSON)</strong> para acceder al terminal.</p>
-        
-        <div class="repo-config">
-            <input type="text" id="gh-owner" placeholder="Usuario/Org GitHub" value="www-globalservice" title="Propietario del Repositorio">
-            <input type="text" id="gh-repo" placeholder="Repositorio" value="www-globalservice.github.io/FM" title="Nombre del Repositorio">
-        </div>
-
+<div id="auth-overlay">
+    <div class="auth-box">
+        <i class="fas fa-usb"></i>
+        <h2>Bloqueo de Seguridad</h2>
+        <p>Inserte la llave criptográfica (Archivo JSON) de TESORERIA para desbloquear la terminal POS.</p>
         <div class="file-upload-wrapper">
-            <div class="btn-upload"><i class="fas fa-key"></i> Autenticar Llave USB</div>
-            <input type="file" id="usb-key-file" accept=".json">
+            <button class="btn-primary"><i class="fas fa-file-import"></i> Cargar Llave USB</button>
+            <input type="file" id="auth-file-input" accept=".json">
         </div>
     </div>
 </div>
 
-<div class="app-container" id="app-container">
+<div class="sync-bar" id="sync-bar" style="display: none;">
+    <div class="sync-status">
+        <div id="status-dot" class="status-indicator status-synced"></div>
+        <span id="status-text">Base de datos sincronizada</span>
+    </div>
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <span id="cooldown-timer" style="font-family: monospace; font-weight: bold; color: var(--color-danger); display: none;"></span>
+        <button id="btn-sync-github" class="btn-warning" disabled><i class="fas fa-cloud-upload-alt"></i> Publicar Cambios</button>
+    </div>
+</div>
+
+<div class="app-content" id="app-main" style="display: none;">
     <div class="control-panel">
         
         <div class="card">
-            <h2><i class="fas fa-boxes"></i> Gestión de Inventario Local</h2>
+            <h2><i class="fas fa-boxes"></i> Gestión de Inventario</h2>
             <form id="product-form">
                 <input type="hidden" id="prod-id">
                 <div class="form-group">
-                    <div class="form-field">
-                        <label>Código SKU</label>
-                        <input type="text" id="prod-code" placeholder="Ej. 111277718" required autocomplete="off">
-                    </div>
-                    <div class="form-field" style="flex: 2;">
-                        <label>Descripción del Producto</label>
-                        <input type="text" id="prod-name" placeholder="Nombre comercial" required autocomplete="off">
-                    </div>
-                    <div class="form-field">
-                        <label>Precio (Bs)</label>
-                        <input type="number" id="prod-price" step="0.01" min="0.01" required>
-                    </div>
+                    <div class="form-field"><label>SKU</label><input type="text" id="prod-code" required autocomplete="off"></div>
+                    <div class="form-field" style="flex: 2;"><label>Descripción</label><input type="text" id="prod-name" required autocomplete="off"></div>
+                    <div class="form-field"><label>Precio (Bs)</label><input type="number" id="prod-price" step="0.01" min="0.01" required></div>
                     <div class="form-field">
                         <label>Impuesto</label>
                         <select id="prod-tax"><option value="G">Gravado (G)</option><option value="E">Exento (E)</option></select>
                     </div>
-                    <button type="submit" id="btn-save-prod" class="btn-primary" style="margin-bottom: 2px;"><i class="fas fa-save"></i> Guardar</button>
+                    <button type="submit" id="btn-save-prod" class="btn-primary" style="margin-bottom: 2px;"><i class="fas fa-save"></i></button>
                 </div>
             </form>
-
-            <div class="table-wrapper">
+            <div style="overflow-x: auto; border-radius: var(--radius-md); border: 1px solid var(--color-border); max-height: 250px; overflow-y: auto;">
                 <table id="product-table">
-                    <thead><tr><th>SKU</th><th>Producto</th><th>Precio (Bs)</th><th>Imp</th><th>Acciones</th></tr></thead>
+                    <thead><tr><th>SKU</th><th>Producto</th><th>Precio</th><th>Imp</th><th>Acciones</th></tr></thead>
                     <tbody id="product-list"></tbody>
                 </table>
             </div>
@@ -219,32 +241,30 @@
             <div class="form-group">
                 <div class="form-field"><label>Cliente</label><input type="text" id="client-name" value="Consumidor Final" autocomplete="off"></div>
                 <div class="form-field"><label>RIF / CI</label><input type="text" id="client-rif" value="V-000000000" autocomplete="off"></div>
-                <div class="form-field"><label>Tasa IVA %</label><input type="number" id="tax-rate" value="12" step="0.1"></div>
+                <div class="form-field"><label>Tasa IVA %</label><input type="number" id="tax-rate" value="16" step="0.1"></div>
             </div>
             
             <div class="form-group" style="background: #f8fafc; padding: 16px; border-radius: var(--radius-md); border: 1px dashed var(--color-border);">
                 <div class="form-field" style="flex: 3;">
-                    <label>Lector / Buscador de Artículos</label>
+                    <label>Lector de Artículos</label>
                     <div class="autocomplete-wrapper">
-                        <input type="text" id="product-search" placeholder="Escanea o escribe el código/nombre..." autocomplete="off">
-                        <ul id="suggestions-list" class="suggestions-list" style="display:none;"></ul>
+                        <input type="text" id="product-search" placeholder="Escanea o escribe código/nombre..." autocomplete="off">
+                        <ul id="suggestions-list" class="suggestions-list"></ul>
                     </div>
                 </div>
                 <div class="form-field"><label>Cant.</label><input type="number" id="invoice-qty" value="1" min="1"></div>
-                <button type="button" id="add-item-btn" class="btn-primary"><i class="fas fa-cart-plus"></i> Añadir</button>
+                <button type="button" id="add-item-btn" class="btn-primary"><i class="fas fa-cart-plus"></i></button>
             </div>
 
-            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px;">
-                <button type="button" id="clear-invoice-btn" class="btn-danger"><i class="fas fa-ban"></i> Cancelar Venta</button>
+            <div style="display: flex; gap: 12px; margin-top: 16px;">
+                <button type="button" id="clear-invoice-btn" class="btn-danger"><i class="fas fa-ban"></i> Cancelar</button>
                 <button type="button" id="print-btn" class="btn-success" style="margin-left: auto; padding: 12px 32px;"><i class="fas fa-print"></i> Emitir Factura</button>
             </div>
         </div>
 
         <div class="card">
-            <h2><i class="fas fa-history"></i> Transacciones Recientes</h2>
-            <div id="historial-content" style="max-height: 250px; overflow-y: auto; padding-right: 8px;">
-                <div id="facturas-historial-list">Cargando transacciones...</div>
-            </div>
+            <h2><i class="fas fa-history"></i> Transacciones Locales</h2>
+            <div id="facturas-historial-list" style="max-height: 200px; overflow-y: auto; padding-right: 8px;"></div>
         </div>
     </div>
 
@@ -252,558 +272,518 @@
         <div id="ticket" class="ticket">
             <div class="ticket-center">
                 <strong>SENIAT</strong><br>J-00020200-1<br>
-                <img id="logo-img" src="" alt="Logo Farmatodo" style="max-width: 70%; margin: 4px auto;" onerror="this.style.display='none'">
-                <div id="logo-placeholder" style="font-size:10px; font-weight:bold;">ESPERANDO LOGO</div>
                 <strong>FARMATODO, C.A</strong><br>
-                Av Los Guayabitos, CC Expreso Baruta<br>Nivel 5 Of Unica, Urb La Trinidad<br>(Sector Piedra Azul), Caracas.<br>
-                FARMACIA CEREZOS, TLF:0281-2780820<br>
+                Av Los Guayabitos, CC Expreso Baruta<br>
                 CAJA 01
             </div>
             <div class="divider"></div>
             <div class="ticket-left">
-                Información del Cliente<br>
-                Nombre del Cliente: <span id="t-client-name">Consumidor Final</span><br>
+                Cliente: <span id="t-client-name">Consumidor Final</span><br>
                 RIF/CI: <span id="t-client-rif">V-000000000</span>
             </div>
             <div class="divider"></div>
-            <div class="ticket-center"><strong>FACTURA</strong></div>
-            <div class="ticket-grid" style="display:flex; justify-content:space-between;">
-                <span>FACTURA: <span id="t-invoice-num">00000001</span></span>
+            <div class="ticket-center"><strong>FACTURA: <span id="t-invoice-num">00000001</span></strong></div>
+            <div style="display:flex; justify-content:space-between;">
+                <span>FECHA: <span id="t-date">--/--/----</span></span>
                 <span>HORA: <span id="t-time">--:--</span></span>
             </div>
-            <div class="ticket-left">FECHA: <span id="t-date">--/--/----</span></div>
             <div class="divider"></div>
             <table class="items-table"><tbody id="t-items"></tbody></table>
             <div class="divider"></div>
             <div class="totals-section">
-                <div class="totals-row"><span>BI G (<span id="tax-rate-display">12.00</span>%)</span><span>Bs <span id="t-bi">0,00</span></span></div>
-                <div class="totals-row"><span>IVA G (<span id="tax-rate-display2">12.00</span>%)</span><span>Bs <span id="t-iva">0,00</span></span></div>
+                <div class="totals-row"><span>BI G (<span id="tax-rate-display">16.00</span>%)</span><span>Bs <span id="t-bi">0,00</span></span></div>
+                <div class="totals-row"><span>IVA G</span><span>Bs <span id="t-iva">0,00</span></span></div>
                 <div class="thick-divider"></div>
                 <div class="totals-row total-final"><span>TOTAL</span><span>Bs <span id="t-total">0,00</span></span></div>
-                <div class="totals-row"><span>EFECTIVO</span><span>Bs <span id="t-efectivo">0,00</span></span></div>
             </div>
             <div class="divider"></div>
-            <div class="ticket-center">Gracias por su visita.<br>
+            <div class="ticket-center">
+                Gracias por su visita.<br>
                 <svg id="barcode" style="width:100%; height:35px; margin-top:5px;"></svg>
             </div>
         </div>
-        
-        <div style="position:fixed; bottom:20px; right:20px; background:white; border-radius:30px; padding:8px 16px; display:flex; gap:10px; align-items: center; box-shadow: var(--shadow-lg); z-index:99;">
-            <label for="logo-upload" style="font-size:0.85rem; cursor: pointer; font-weight: 600; color: var(--color-primary);"><i class="fas fa-image"></i> Cambiar Logo</label>
-            <input type="file" id="logo-upload" accept="image/*" style="display:none;">
-            <button id="clear-logo" class="btn-danger" style="padding: 4px 8px; border-radius: 50%;"><i class="fas fa-times"></i></button>
-        </div>
     </div>
 </div>
-
-<button id="btn-publish-cloud" class="float-sync-btn">
-    <i class="fas fa-cloud-upload-alt"></i> Sincronizar Cambios (<span id="sync-timer">00:00</span>)
-    <div class="dirty-dot" id="dirty-indicator"></div>
-</button>
 
 <div id="toast-container" class="toast-container"></div>
 
 <script>
 /**
- * Arquitectura POS Modular - ES6+ Serverless (GitHub Backend)
+ * --------------------------------------------------------------------------
+ * MÓDULO 1: SEGURIDAD Y ANTI-MANIPULACIÓN
+ * --------------------------------------------------------------------------
  */
-
-const Utils = {
-    formatCurrency: (val) => val.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-    escapeHtml: (str) => str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])),
-    sanitize: (str) => {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    },
-    generatePad: (num, size) => String(num).padStart(size, '0'),
-    showToast: (message, type = 'info') => {
-        const container = document.getElementById('toast-container');
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        const icons = { success: 'fa-check-circle', error: 'fa-exclamation-triangle', info: 'fa-info-circle' };
-        toast.innerHTML = `<i class="fas ${icons[type]}"></i> <span>${message}</span>`;
-        container.appendChild(toast);
-        setTimeout(() => {
-            toast.classList.add('fade-out');
-            toast.addEventListener('animationend', () => toast.remove());
-        }, 3000);
-    }
-};
-
-// --- MÓDULO DE SEGURIDAD (IIFE Clousure) ---
-// Aisla los tokens del scope global para prevenir robos vía XSS.
 const SecurityLayer = (() => {
+    // Evitar click derecho y atajos de teclado (F12, Ctrl+Shift+I)
+    const initAntiTamper = () => {
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        document.addEventListener('keydown', e => {
+            if (e.key === 'F12' || 
+               (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) || 
+               (e.ctrlKey && e.key === 'U')) {
+                e.preventDefault();
+            }
+        });
+    };
+
+    // Sanitización de entradas para prevenir XSS
+    const sanitize = (str) => {
+        if (typeof str !== 'string') return str;
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;', "/": '&#x2F;' };
+        return str.replace(/[&<>"'/]/ig, (match) => map[match]);
+    };
+
+    return { initAntiTamper, sanitize };
+})();
+
+/**
+ * --------------------------------------------------------------------------
+ * MÓDULO 2: AUTENTICACIÓN (CLOSURE PATTERN)
+ * Encapsula el Token de GitHub para que sea inaccesible desde la consola.
+ * --------------------------------------------------------------------------
+ */
+const AuthCore = (() => {
     let _githubToken = null;
-    let _sha = null;
-    let _inactivityTimer = null;
-    const EXPECTED_KEY = "00TANGOECHOSOECHONOVEMBER1039";
-    const INACTIVITY_LIMIT = 10 * 60 * 1000; // 10 Minutos
-
-    const resetTimer = () => {
-        if (!_githubToken) return;
-        clearTimeout(_inactivityTimer);
-        _inactivityTimer = setTimeout(lockSystem, INACTIVITY_LIMIT);
-    };
-
-    const lockSystem = () => {
-        _githubToken = null;
-        clearTimeout(_inactivityTimer);
-        document.getElementById('lock-screen').style.display = 'flex';
-        document.getElementById('app-container').style.display = 'none';
-        document.getElementById('btn-publish-cloud').style.display = 'none';
-        document.getElementById('usb-key-file').value = '';
-        Utils.showToast("Sistema bloqueado por inactividad. Inserte Llave USB.", "info");
-    };
-
-    // Tracking de eventos para el temporizador
-    ['mousemove', 'keydown', 'click', 'scroll'].forEach(evt => document.addEventListener(evt, resetTimer));
-
-    const getHeaders = () => ({
-        'Authorization': `Bearer ${_githubToken}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json'
-    });
+    const REQUIRED_KEY = "00TANGOECHOSOECHONOVEMBER1039";
+    
+    // Configuración del Repositorio Destino
+    const REPO_OWNER = "www-globalservice";
+    const REPO_NAME = "www-globalservice.github.io";
+    const FILE_PATH = "FM/bd.json";
 
     return {
-        authenticate: async (fileContent, owner, repo) => {
+        login: (fileContent) => {
             try {
-                const creds = JSON.parse(fileContent);
-                if (creds.accessKey !== EXPECTED_KEY) throw new Error("Acceso denegado. Llave corrupta.");
-                if (!creds.githubToken) throw new Error("Estructura de llave inválida.");
-
-                _githubToken = creds.githubToken;
-                SecurityLayer.owner = owner;
-                SecurityLayer.repo = repo;
-
-                Utils.showToast("Autenticando hardware... Estableciendo conexión segura.", "info");
-                await SecurityLayer.syncRead();
-
-                // Unlock UI
-                document.getElementById('lock-screen').style.display = 'none';
-                document.getElementById('app-container').style.display = 'flex';
-                document.getElementById('btn-publish-cloud').style.display = 'inline-flex';
-                resetTimer();
-                AppUI.init();
-            } catch (err) {
-                Utils.showToast(err.message, "error");
-                lockSystem();
-            }
-        },
-
-        syncRead: async () => {
-            try {
-                const url = `https://api.github.com/repos/${SecurityLayer.owner}/${SecurityLayer.repo}/contents/bd.json`;
-                const res = await fetch(url, { headers: getHeaders() });
-                
-                if (res.status === 404) {
-                    Utils.showToast("Base de datos no encontrada, creando una nueva...", "info");
-                    return; // Opera con default locale
+                const data = JSON.parse(fileContent);
+                if (data.accessKey === REQUIRED_KEY && data.githubToken) {
+                    _githubToken = data.githubToken;
+                    return true;
                 }
-                if (!res.ok) throw new Error(`API Error: ${res.status}`);
-
-                const data = await res.json();
-                _sha = data.sha;
-                
-                // Decode Base64 maintaining UTF-8 integrity
-                const decodedPayload = decodeURIComponent(escape(atob(data.content)));
-                const remoteData = JSON.parse(decodedPayload);
-                
-                AppStorage.save(remoteData);
-                AppStorage.setDirty(false);
-                Utils.showToast("Sincronización inicial completada.", "success");
-            } catch (err) {
-                throw new Error("Error sincronizando repositorio: " + err.message);
-            }
+                return false;
+            } catch (e) { return false; }
         },
-
-        syncWrite: async (payload) => {
-            if (!_githubToken) throw new Error("No autenticado.");
-            
-            const url = `https://api.github.com/repos/${SecurityLayer.owner}/${SecurityLayer.repo}/contents/bd.json`;
-            const jsonStr = JSON.stringify(payload, null, 2);
-            const encodedPayload = btoa(unescape(encodeURIComponent(jsonStr)));
-
-            const body = JSON.stringify({
-                message: `POS Sync - ${new Date().toISOString()}`,
-                content: encodedPayload,
-                sha: _sha
-            });
-
-            const res = await fetch(url, { method: 'PUT', headers: getHeaders(), body });
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.message);
-            }
-            
-            const responseData = await res.json();
-            _sha = responseData.content.sha; // Update SHA for next commit
-            return true;
-        }
+        getApiUrl: () => `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`,
+        getHeaders: () => {
+            if (!_githubToken) throw new Error("Acceso no autorizado");
+            return {
+                "Authorization": `Bearer ${_githubToken}`,
+                "Accept": "application/vnd.github.v3+json",
+                "Content-Type": "application/json"
+            };
+        },
+        isAuthenticated: () => !!_githubToken
     };
 })();
 
-// --- CAPA DE ALMACENAMIENTO (Local / Cache-First) ---
-const AppStorage = {
-    KEY: 'farmatodo_v3_data',
-    LOGO_KEY: 'farmatodo_logo',
-    IS_DIRTY_KEY: 'pos_dirty_flag',
-    
-    getDefaultData: () => ({
-        products: [], invoices: [], config: { lastInvoiceNumber: 1, defaultTaxRate: 12, boxNumber: "01" }
-    }),
+/**
+ * --------------------------------------------------------------------------
+ * MÓDULO 3: SINCRONIZACIÓN Y CACHÉ LOCAL (SERVERLESS)
+ * --------------------------------------------------------------------------
+ */
+const DBManager = (() => {
+    const DRAFT_KEY = 'pos_local_draft';
+    const REMOTE_SNAPSHOT_KEY = 'pos_remote_snapshot';
+    let currentSha = null;
+    let isCooldown = false;
 
-    load: () => {
+    const getDraft = () => JSON.parse(localStorage.getItem(DRAFT_KEY)) || { products: [], invoices: [], config: { lastInvoiceNumber: 1 } };
+    const saveDraft = (data) => localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+    
+    const checkSyncStatus = () => {
+        const draft = localStorage.getItem(DRAFT_KEY);
+        const snapshot = localStorage.getItem(REMOTE_SNAPSHOT_KEY);
+        return draft === snapshot;
+    };
+
+    // Codificación Base64 segura para UTF-8
+    const toBase64 = (str) => window.btoa(unescape(encodeURIComponent(str)));
+    const fromBase64 = (str) => decodeURIComponent(escape(window.atob(str)));
+
+    // Descargar BD de GitHub al Iniciar
+    const fetchRemoteDB = async () => {
         try {
-            const stored = localStorage.getItem(AppStorage.KEY);
-            return stored ? { ...AppStorage.getDefaultData(), ...JSON.parse(stored) } : AppStorage.getDefaultData();
-        } catch (e) { return AppStorage.getDefaultData(); }
-    },
+            const url = `https://raw.githubusercontent.com/www-globalservice/www-globalservice.github.io/main/FM/bd.json?t=${new Date().getTime()}`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("No se encontró bd.json");
+            
+            const data = await res.json();
+            localStorage.setItem(REMOTE_SNAPSHOT_KEY, JSON.stringify(data));
+            
+            // Si el draft local está vacío, inicializar con el remoto
+            if (!localStorage.getItem(DRAFT_KEY)) saveDraft(data);
+            
+            // Obtener SHA actual para futuras escrituras
+            const apiRes = await fetch(AuthCore.getApiUrl(), { headers: AuthCore.getHeaders() });
+            if (apiRes.ok) {
+                const apiData = await apiRes.json();
+                currentSha = apiData.sha;
+            }
+            return data;
+        } catch (error) {
+            console.error("Fetch Error:", error);
+            // Si falla (ej. primer despliegue), usar draft local
+            return getDraft();
+        }
+    };
 
-    save: (data) => {
-        localStorage.setItem(AppStorage.KEY, JSON.stringify(data));
-        AppStorage.setDirty(true);
-    },
-    
-    setDirty: (state) => {
-        localStorage.setItem(AppStorage.IS_DIRTY_KEY, state);
-        const indicator = document.getElementById('dirty-indicator');
-        if(indicator) indicator.style.display = state ? 'block' : 'none';
-    },
-
-    saveLogo: (base64) => localStorage.setItem(AppStorage.LOGO_KEY, base64),
-    loadLogo: () => localStorage.getItem(AppStorage.LOGO_KEY),
-    clearLogo: () => localStorage.removeItem(AppStorage.LOGO_KEY)
-};
-
-// --- LOGICA DE ESTADO ---
-const POSState = {
-    data: AppStorage.load(),
-    currentInvoiceItems: [],
-    selectedProductTemp: null,
-
-    addProduct(prod) {
-        const index = this.data.products.findIndex(p => p.id === prod.id);
-        if (index !== -1) this.data.products[index] = prod;
-        else this.data.products.push(prod);
-        this.saveState();
-    },
-
-    deleteProduct(id) {
-        this.data.products = this.data.products.filter(p => p.id !== id);
-        this.saveState();
-    },
-
-    addItemToCart(product, qty) {
-        const existing = this.currentInvoiceItems.find(i => i.id === product.id);
-        if (existing) existing.qty += qty;
-        else this.currentInvoiceItems.push({ ...product, qty });
-    },
-
-    saveInvoice(record) {
-        this.data.invoices.unshift(record);
-        this.data.config.lastInvoiceNumber++;
-        this.currentInvoiceItems = [];
-        this.saveState();
-    },
-
-    saveState() { AppStorage.save(this.data); }
-};
-
-// --- INTERFAZ UI ---
-const AppUI = {
-    init() {
-        // Cargar datos en caso de reconexión tras bloqueo
-        POSState.data = AppStorage.load(); 
-        AppStorage.setDirty(localStorage.getItem(AppStorage.IS_DIRTY_KEY) === 'true');
+    // Publicar BD en GitHub API (PUT)
+    const pushToGitHub = async () => {
+        if (isCooldown) throw new Error("Sistema en tiempo de propagación");
         
-        this.cacheDOM();
-        this.bindEvents();
-        this.renderAll();
-        this.setupClock();
-    },
-
-    cacheDOM() {
-        this.dom = {
-            productList: document.getElementById('product-list'),
-            form: document.getElementById('product-form'),
-            prodCode: document.getElementById('prod-code'),
-            prodName: document.getElementById('prod-name'),
-            prodPrice: document.getElementById('prod-price'),
-            prodTax: document.getElementById('prod-tax'),
-            btnSaveProd: document.getElementById('btn-save-prod'),
-            search: document.getElementById('product-search'),
-            suggestions: document.getElementById('suggestions-list'),
-            qty: document.getElementById('invoice-qty'),
-            historialList: document.getElementById('facturas-historial-list'),
-            logoImg: document.getElementById('logo-img'),
-            logoPlaceholder: document.getElementById('logo-placeholder'),
-            clientName: document.getElementById('client-name'),
-            clientRif: document.getElementById('client-rif'),
-            taxRate: document.getElementById('tax-rate'),
-            btnSyncCloud: document.getElementById('btn-publish-cloud'),
-            syncTimer: document.getElementById('sync-timer')
+        const currentDataStr = localStorage.getItem(DRAFT_KEY);
+        const payload = {
+            message: `Actualización POS: ${new Date().toISOString()}`,
+            content: toBase64(currentDataStr)
         };
-    },
-
-    bindEvents() {
-        this.dom.form.addEventListener('submit', e => { e.preventDefault(); this.handleSaveProduct(); });
-        this.dom.search.addEventListener('input', e => this.handleSearch(e.target.value));
-        document.addEventListener('click', e => { if(!this.dom.search.contains(e.target)) this.dom.suggestions.style.display='none'; });
         
-        document.getElementById('add-item-btn').addEventListener('click', () => this.handleAddToCart());
-        document.getElementById('print-btn').addEventListener('click', () => this.handlePrintInvoice());
-        document.getElementById('clear-invoice-btn').addEventListener('click', () => this.clearCart());
-        
-        this.dom.btnSyncCloud.addEventListener('click', () => this.handleCloudPublish());
+        if (currentSha) payload.sha = currentSha;
 
-        ['clientName', 'clientRif', 'taxRate'].forEach(id => {
-            this.dom[id].addEventListener('input', () => this.updateTicketPreview());
+        const res = await fetch(AuthCore.getApiUrl(), {
+            method: 'PUT',
+            headers: AuthCore.getHeaders(),
+            body: JSON.stringify(payload)
         });
 
-        document.getElementById('logo-upload').addEventListener('change', e => this.handleLogoUpload(e));
-        document.getElementById('clear-logo').addEventListener('click', () => { AppStorage.clearLogo(); this.renderLogo(); });
-    },
+        if (!res.ok) throw new Error("Error publicando en GitHub");
+        
+        const responseData = await res.json();
+        currentSha = responseData.content.sha;
+        
+        // Actualizar snapshot para que marque como sincronizado
+        localStorage.setItem(REMOTE_SNAPSHOT_KEY, currentDataStr);
+        return true;
+    };
 
-    renderAll() {
-        this.renderInventory();
-        this.renderHistorial();
-        this.renderLogo();
-        this.updateTicketPreview();
-    },
+    return { getDraft, saveDraft, checkSyncStatus, fetchRemoteDB, pushToGitHub, isCooldown: () => isCooldown, setCooldown: (val) => isCooldown = val };
+})();
 
-    renderInventory() {
-        this.dom.productList.innerHTML = POSState.data.products.map(p => `
+/**
+ * --------------------------------------------------------------------------
+ * MÓDULO 4: LÓGICA DEL NEGOCIO (POS)
+ * --------------------------------------------------------------------------
+ */
+const POSController = (() => {
+    let db = { products: [], invoices: [], config: {} };
+    let currentCart = [];
+    let selectedTemp = null;
+
+    const init = async () => {
+        db = await DBManager.fetchRemoteDB();
+        UI.renderAll();
+        UI.updateSyncUI();
+    };
+
+    const addProduct = (prod) => {
+        prod.name = SecurityLayer.sanitize(prod.name);
+        prod.id = SecurityLayer.sanitize(prod.id);
+        const idx = db.products.findIndex(p => p.id === prod.id);
+        if (idx > -1) db.products[idx] = prod; else db.products.push(prod);
+        commitChanges();
+    };
+
+    const deleteProduct = (id) => {
+        db.products = db.products.filter(p => p.id !== id);
+        commitChanges();
+    };
+
+    const addToCart = (product, qty) => {
+        const exist = currentCart.find(i => i.id === product.id);
+        if (exist) exist.qty += qty; else currentCart.push({ ...product, qty });
+    };
+
+    const processSale = (client, rif, taxRate) => {
+        if (currentCart.length === 0) return false;
+        
+        const subtotal = currentCart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+        const total = subtotal * (1 + (taxRate / 100));
+        
+        const invoice = {
+            numero: String(db.config.lastInvoiceNumber || 1).padStart(8, '0'),
+            fecha: new Date().toLocaleDateString('es-VE'),
+            hora: new Date().toLocaleTimeString('es-VE', {hour:'2-digit', minute:'2-digit'}),
+            cliente: SecurityLayer.sanitize(client),
+            rif: SecurityLayer.sanitize(rif),
+            total: total
+        };
+
+        db.invoices.unshift(invoice);
+        db.config.lastInvoiceNumber = (db.config.lastInvoiceNumber || 1) + 1;
+        currentCart = [];
+        commitChanges();
+        return true;
+    };
+
+    const commitChanges = () => {
+        DBManager.saveDraft(db);
+        UI.renderAll();
+        UI.updateSyncUI();
+    };
+
+    return { init, addProduct, deleteProduct, addToCart, processSale, getDB: () => db, getCart: () => currentCart, clearCart: () => currentCart = [] };
+})();
+
+/**
+ * --------------------------------------------------------------------------
+ * MÓDULO 5: INTERFAZ DE USUARIO (UI)
+ * --------------------------------------------------------------------------
+ */
+const UI = (() => {
+    // Utilidades de formato
+    const formatBs = (val) => val.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    
+    const showToast = (msg, type = 'info') => {
+        const container = document.getElementById('toast-container');
+        const t = document.createElement('div');
+        t.className = `toast ${type}`;
+        t.innerHTML = `<span>${msg}</span>`;
+        container.appendChild(t);
+        setTimeout(() => t.remove(), 3000);
+    };
+
+    const renderInventory = () => {
+        const tbody = document.getElementById('product-list');
+        const db = POSController.getDB();
+        tbody.innerHTML = db.products.map(p => `
             <tr>
-                <td><strong>${Utils.escapeHtml(p.id)}</strong></td>
-                <td>${Utils.escapeHtml(p.name)}</td>
-                <td>Bs ${Utils.formatCurrency(p.price)}</td>
-                <td><span style="background: #e2e8f0; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">${p.tax}</span></td>
+                <td><strong>${p.id}</strong></td>
+                <td>${p.name}</td>
+                <td>Bs ${formatBs(p.price)}</td>
+                <td>${p.tax}</td>
                 <td class="actions">
-                    <i class="fas fa-trash-alt" onclick="AppUI.deleteProduct('${p.id}')" title="Eliminar"></i>
+                    <i class="fas fa-trash-alt" onclick="window.appDeleteProd('${p.id}')"></i>
                 </td>
             </tr>
         `).join('');
-    },
+    };
 
-    renderHistorial() {
-        if (!POSState.data.invoices.length) {
-            this.dom.historialList.innerHTML = '<div style="padding: 10px; color: var(--color-text-muted);">No hay transacciones recientes.</div>';
-            return;
-        }
-        this.dom.historialList.innerHTML = POSState.data.invoices.slice(0, 20).map(f => `
+    const renderHistory = () => {
+        const list = document.getElementById('facturas-historial-list');
+        const db = POSController.getDB();
+        list.innerHTML = db.invoices.slice(0, 10).map(f => `
             <div class="factura-item">
-                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                    <strong>#${f.numero}</strong><span style="color:var(--color-text-muted); font-size:0.75rem;">${f.hora}</span>
-                </div>
-                <div>${Utils.escapeHtml(f.cliente)}</div>
-                <div style="color:var(--color-primary); font-weight:bold; margin-top:4px;">Bs ${Utils.formatCurrency(f.total)}</div>
+                <div style="display:flex; justify-content:space-between;"><strong>#${f.numero}</strong> <small>${f.hora}</small></div>
+                <div>${f.cliente}</div>
+                <div style="color:var(--color-primary); font-weight:bold;">Bs ${formatBs(f.total)}</div>
             </div>
         `).join('');
-    },
+    };
 
-    renderLogo() {
-        const saved = AppStorage.loadLogo();
-        if (saved) {
-            this.dom.logoImg.src = saved;
-            this.dom.logoImg.style.display = 'block';
-            this.dom.logoPlaceholder.style.display = 'none';
-        } else {
-            this.dom.logoImg.style.display = 'none';
-            this.dom.logoPlaceholder.style.display = 'block';
-        }
-    },
-
-    updateTicketPreview() {
-        const { currentInvoiceItems, data: { config } } = POSState;
+    const updateTicket = () => {
+        const cart = POSController.getCart();
+        const db = POSController.getDB();
         
-        document.getElementById('t-client-name').textContent = Utils.sanitize(this.dom.clientName.value.toUpperCase()) || 'CONSUMIDOR FINAL';
-        document.getElementById('t-client-rif').textContent = Utils.sanitize(this.dom.clientRif.value.toUpperCase()) || 'V-000000000';
+        document.getElementById('t-client-name').innerText = document.getElementById('client-name').value.toUpperCase() || 'CONSUMIDOR FINAL';
+        document.getElementById('t-client-rif').innerText = document.getElementById('client-rif').value.toUpperCase() || 'V-000000000';
         
-        const invoiceNumStr = Utils.generatePad(config.lastInvoiceNumber, 8);
-        document.getElementById('t-invoice-num').textContent = invoiceNumStr;
+        const invNum = String(db.config.lastInvoiceNumber || 1).padStart(8, '0');
+        document.getElementById('t-invoice-num').innerText = invNum;
         
-        const taxRate = parseFloat(this.dom.taxRate.value) || 12;
-        document.getElementById('tax-rate-display').textContent = taxRate.toFixed(2);
-        document.getElementById('tax-rate-display2').textContent = taxRate.toFixed(2);
+        const tax = parseFloat(document.getElementById('tax-rate').value) || 16;
+        document.getElementById('tax-rate-display').innerText = tax.toFixed(2);
         
-        let subtotalGravado = 0, subtotalExento = 0;
-        const tItemsBody = document.getElementById('t-items');
-        tItemsBody.innerHTML = '';
+        let subG = 0, subE = 0;
+        const tbody = document.getElementById('t-items');
+        tbody.innerHTML = '';
         
-        currentInvoiceItems.forEach(item => {
+        cart.forEach(item => {
             const lineTotal = item.price * item.qty;
-            if (item.tax === 'G') subtotalGravado += lineTotal;
-            else subtotalExento += lineTotal;
-            
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td class="col-desc">|${item.id}|<br>${item.qty} x ${item.name} (${item.tax})</td><td class="col-price">Bs ${Utils.formatCurrency(lineTotal)}</td>`;
-            tItemsBody.appendChild(tr);
+            if (item.tax === 'G') subG += lineTotal; else subE += lineTotal;
+            tbody.innerHTML += `<tr><td class="col-desc">${item.qty}x ${item.name}</td><td class="col-price">${formatBs(lineTotal)}</td></tr>`;
         });
         
-        const iva = subtotalGravado * (taxRate / 100);
-        const total = subtotalGravado + subtotalExento + iva;
+        const iva = subG * (tax / 100);
+        const total = subG + subE + iva;
         
-        document.getElementById('t-bi').textContent = Utils.formatCurrency(subtotalGravado + subtotalExento);
-        document.getElementById('t-iva').textContent = Utils.formatCurrency(iva);
-        document.getElementById('t-total').textContent = Utils.formatCurrency(total);
-        document.getElementById('t-efectivo').textContent = Utils.formatCurrency(total);
+        document.getElementById('t-bi').innerText = formatBs(subG + subE);
+        document.getElementById('t-iva').innerText = formatBs(iva);
+        document.getElementById('t-total').innerText = formatBs(total);
         
-        JsBarcode(document.getElementById('barcode'), invoiceNumStr, { format:"CODE128", width:2, height:35, displayValue:false, margin:0 });
-    },
+        JsBarcode("#barcode", invNum, { format: "CODE128", width: 2, height: 35, displayValue: false, margin: 0 });
+    };
 
-    setupClock() {
-        const updateTime = () => {
-            const now = new Date();
-            document.getElementById('t-date').textContent = now.toLocaleDateString('es-VE');
-            document.getElementById('t-time').textContent = now.toLocaleTimeString('es-VE', {hour:'2-digit', minute:'2-digit'});
-        };
-        updateTime();
-        setInterval(updateTime, 1000);
-    },
-
-    handleSearch(term) {
-        term = term.trim().toLowerCase();
-        if (!term) { this.dom.suggestions.style.display = 'none'; return; }
-        const filtered = POSState.data.products.filter(p => p.id.toLowerCase().includes(term) || p.name.toLowerCase().includes(term)).slice(0, 6);
+    const updateSyncUI = () => {
+        const isSynced = DBManager.checkSyncStatus();
+        const dot = document.getElementById('status-dot');
+        const txt = document.getElementById('status-text');
+        const btn = document.getElementById('btn-sync-github');
         
-        if (filtered.length) {
-            this.dom.suggestions.innerHTML = filtered.map(p => `
-                <li onclick="AppUI.selectSearchResult('${p.id}')">
-                    <span><strong>${p.id}</strong> - ${Utils.escapeHtml(p.name)}</span>
-                    <span style="font-weight:bold; color:var(--color-primary);">Bs ${Utils.formatCurrency(p.price)}</span>
-                </li>
-            `).join('');
-            this.dom.suggestions.style.display = 'block';
-        } else this.dom.suggestions.style.display = 'none';
-    },
-
-    selectSearchResult(id) {
-        const prod = POSState.data.products.find(p => p.id === id);
-        if (prod) {
-            this.dom.search.value = `${prod.id} - ${prod.name}`;
-            POSState.selectedProductTemp = prod;
+        if (isSynced) {
+            dot.className = 'status-indicator status-synced';
+            txt.innerText = 'Base de datos sincronizada (En Producción)';
+            btn.disabled = true;
+        } else {
+            dot.className = 'status-indicator status-unsynced';
+            txt.innerText = 'Existen cambios locales sin publicar';
+            if (!DBManager.isCooldown()) btn.disabled = false;
         }
-        this.dom.suggestions.style.display = 'none';
-    },
+    };
 
-    handleAddToCart() {
-        let product = POSState.selectedProductTemp;
-        if (!product) {
-            const match = POSState.data.products.find(p => p.id === this.dom.search.value || p.name.toLowerCase() === this.dom.search.value.toLowerCase());
-            if (!match) { Utils.showToast("Seleccione un producto válido", "error"); return; }
-            product = match;
-        }
-        const qty = parseInt(this.dom.qty.value);
-        if (isNaN(qty) || qty <= 0) return;
+    const startCooldown = () => {
+        DBManager.setCooldown(true);
+        const btn = document.getElementById('btn-sync-github');
+        const timerSpan = document.getElementById('cooldown-timer');
+        btn.disabled = true;
+        timerSpan.style.display = 'inline';
         
-        POSState.addItemToCart(product, qty);
-        POSState.selectedProductTemp = null;
-        this.dom.search.value = ''; this.dom.qty.value = '1'; this.dom.search.focus();
-        this.updateTicketPreview();
-    },
+        let timeLeft = 180; // 3 minutos
+        const tick = setInterval(() => {
+            const m = Math.floor(timeLeft / 60);
+            const s = timeLeft % 60;
+            timerSpan.innerText = `Propagando cambios... Espera ${m}:${s.toString().padStart(2, '0')}`;
+            timeLeft--;
+            
+            if (timeLeft < 0) {
+                clearInterval(tick);
+                DBManager.setCooldown(false);
+                timerSpan.style.display = 'none';
+                updateSyncUI();
+            }
+        }, 1000);
+    };
 
-    handlePrintInvoice() {
-        if (!POSState.currentInvoiceItems.length) return Utils.showToast("Ticket vacío.", "error");
-
+    // Reloj Ticket
+    setInterval(() => {
         const now = new Date();
-        const taxRate = parseFloat(this.dom.taxRate.value) || 12;
-        const subtotal = POSState.currentInvoiceItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
-        
-        const record = {
-            numero: Utils.generatePad(POSState.data.config.lastInvoiceNumber, 8),
-            fecha: now.toLocaleDateString('es-VE'), hora: now.toLocaleTimeString('es-VE', {hour:'2-digit', minute:'2-digit'}),
-            cliente: Utils.sanitize(this.dom.clientName.value.toUpperCase()) || 'CONSUMIDOR FINAL',
-            rif: Utils.sanitize(this.dom.clientRif.value.toUpperCase()) || 'V-000000000',
-            total: subtotal * (1 + (taxRate / 100))
-        };
+        document.getElementById('t-date').innerText = now.toLocaleDateString('es-VE');
+        document.getElementById('t-time').innerText = now.toLocaleTimeString('es-VE', {hour:'2-digit', minute:'2-digit'});
+    }, 1000);
 
-        POSState.saveInvoice(record);
-        window.print();
-        this.updateTicketPreview();
-        this.renderHistorial();
-        Utils.showToast("Factura procesada localmente", "success");
-    },
+    return { renderAll: () => { renderInventory(); renderHistory(); updateTicket(); }, updateTicket, updateSyncUI, showToast, startCooldown };
+})();
 
-    clearCart() { POSState.currentInvoiceItems = []; this.updateTicketPreview(); },
+/**
+ * --------------------------------------------------------------------------
+ * MÓDULO 6: CONTROLADOR DE EVENTOS PRINCIPALES
+ * --------------------------------------------------------------------------
+ */
+document.addEventListener('DOMContentLoaded', () => {
+    SecurityLayer.initAntiTamper();
 
-    handleSaveProduct() {
-        const id = Utils.sanitize(this.dom.prodCode.value.trim());
-        if (POSState.data.products.find(p => p.id === id)) { Utils.showToast("El SKU ya existe", "error"); return; }
-
-        POSState.addProduct({
-            id, name: Utils.sanitize(this.dom.prodName.value.trim().toUpperCase()),
-            price: parseFloat(this.dom.prodPrice.value), tax: this.dom.prodTax.value, stockMin: 0
-        });
-        
-        this.dom.form.reset(); this.renderInventory();
-        Utils.showToast("Inventario actualizado localmente", "success");
-    },
-
-    deleteProduct(id) {
-        if (confirm(`Eliminar SKU: ${id}?`)) { POSState.deleteProduct(id); this.renderInventory(); }
-    },
-
-    handleLogoUpload(e) {
+    // 1. Manejo de la "Llave USB" (Auth)
+    document.getElementById('auth-file-input').addEventListener('change', (e) => {
         const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = ev => { AppStorage.saveLogo(ev.target.result); this.renderLogo(); };
-            reader.readAsDataURL(file);
-        }
-    },
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+            if (AuthCore.login(ev.target.result)) {
+                document.getElementById('auth-overlay').style.display = 'none';
+                document.getElementById('app-main').style.display = 'flex';
+                document.getElementById('sync-bar').style.display = 'flex';
+                UI.showToast("Acceso Autorizado. Sistema Desbloqueado.", "success");
+                await POSController.init();
+            } else {
+                UI.showToast("Llave criptográfica inválida o corrupta.", "error");
+            }
+        };
+        reader.readAsText(file);
+    });
 
-    // --- MANEJO DE PUBLICACIÓN A LA NUBE (Fase 4) ---
-    async handleCloudPublish() {
-        if (this.dom.btnSyncCloud.disabled) return;
-        
-        this.dom.btnSyncCloud.disabled = true;
-        this.dom.syncTimer.textContent = 'Enviando...';
-
+    // 2. Sincronización Remota (GitHub API)
+    document.getElementById('btn-sync-github').addEventListener('click', async () => {
         try {
-            await SecurityLayer.syncWrite(POSState.data);
-            AppStorage.setDirty(false);
-            Utils.showToast("Bases de datos sincronizadas con la Nube Central", "success");
+            document.getElementById('btn-sync-github').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
+            document.getElementById('btn-sync-github').disabled = true;
             
-            // Cooldown de Seguridad (3 minutos)
-            let timeLeft = 180;
-            const cd = setInterval(() => {
-                timeLeft--;
-                const m = String(Math.floor(timeLeft / 60)).padStart(2, '0');
-                const s = String(timeLeft % 60).padStart(2, '0');
-                this.dom.syncTimer.textContent = `${m}:${s}`;
-                
-                if (timeLeft <= 0) {
-                    clearInterval(cd);
-                    this.dom.btnSyncCloud.disabled = false;
-                    this.dom.syncTimer.textContent = '00:00';
-                }
-            }, 1000);
+            await DBManager.pushToGitHub();
+            UI.showToast("Base de datos publicada exitosamente", "success");
+            
+            document.getElementById('btn-sync-github').innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Publicar Cambios';
+            UI.updateSyncUI();
+            UI.startCooldown(); // Inicia el bloqueo de 3 min
         } catch (err) {
-            this.dom.btnSyncCloud.disabled = false;
-            this.dom.syncTimer.textContent = 'Reintentar';
-            Utils.showToast("Fallo en sincronización: " + err.message, "error");
+            UI.showToast(err.message, "error");
+            document.getElementById('btn-sync-github').innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Publicar Cambios';
+            document.getElementById('btn-sync-github').disabled = false;
         }
-    }
-};
+    });
 
-// --- BOOTSTRAP: EVENTO FASE 1 ---
-document.getElementById('usb-key-file').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
+    // 3. Formularios y POS
+    document.getElementById('product-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        POSController.addProduct({
+            id: document.getElementById('prod-code').value.trim(),
+            name: document.getElementById('prod-name').value.trim().toUpperCase(),
+            price: parseFloat(document.getElementById('prod-price').value),
+            tax: document.getElementById('prod-tax').value
+        });
+        e.target.reset();
+        UI.showToast("Producto guardado en borrador local", "info");
+    });
 
-    const owner = document.getElementById('gh-owner').value.trim();
-    const repo = document.getElementById('gh-repo').value.trim();
+    // Búsqueda Predictiva
+    const searchInput = document.getElementById('product-search');
+    const suggList = document.getElementById('suggestions-list');
     
-    if(!owner || !repo) {
-        Utils.showToast("Defina el propietario y repositorio.", "error");
-        return;
-    }
+    searchInput.addEventListener('input', (e) => {
+        const term = SecurityLayer.sanitize(e.target.value.toLowerCase());
+        if (!term) { suggList.style.display = 'none'; return; }
+        
+        const db = POSController.getDB();
+        const matches = db.products.filter(p => p.id.toLowerCase().includes(term) || p.name.toLowerCase().includes(term)).slice(0, 5);
+        
+        if (matches.length) {
+            suggList.innerHTML = matches.map(p => `<li onclick="window.appSelectProd('${p.id}')"><span>${p.id} - ${p.name}</span></li>`).join('');
+            suggList.style.display = 'block';
+        } else {
+            suggList.style.display = 'none';
+        }
+    });
 
-    const reader = new FileReader();
-    reader.onload = async (ev) => { await SecurityLayer.authenticate(ev.target.result, owner, repo); };
-    reader.onerror = () => Utils.showToast("Error físico leyendo la llave USB.", "error");
-    reader.readAsText(file);
+    document.addEventListener('click', (e) => { if(!searchInput.contains(e.target)) suggList.style.display = 'none'; });
+
+    // Exponer funciones globales mínimas necesarias para los onclick generados dinámicamente
+    window.appSelectProd = (id) => {
+        const db = POSController.getDB();
+        const prod = db.products.find(p => p.id === id);
+        if (prod) {
+            searchInput.value = `${prod.id}`;
+            suggList.style.display = 'none';
+        }
+    };
+
+    window.appDeleteProd = (id) => {
+        if(confirm(`¿Eliminar SKU: ${id}?`)) POSController.deleteProduct(id);
+    };
+
+    // Añadir al Carrito
+    document.getElementById('add-item-btn').addEventListener('click', () => {
+        const term = searchInput.value.trim();
+        const db = POSController.getDB();
+        const prod = db.products.find(p => p.id === term || p.id === term.split(' ')[0]);
+        
+        if (!prod) { UI.showToast("Producto no encontrado", "error"); return; }
+        
+        const qty = parseInt(document.getElementById('invoice-qty').value) || 1;
+        POSController.addToCart(prod, qty);
+        
+        searchInput.value = '';
+        document.getElementById('invoice-qty').value = '1';
+        UI.updateTicket();
+    });
+
+    // Facturación e Impresión
+    document.getElementById('print-btn').addEventListener('click', () => {
+        const client = document.getElementById('client-name').value;
+        const rif = document.getElementById('client-rif').value;
+        const tax = parseFloat(document.getElementById('tax-rate').value) || 16;
+        
+        if (POSController.processSale(client, rif, tax)) {
+            window.print();
+            UI.showToast("Venta registrada localmente", "success");
+        } else {
+            UI.showToast("El ticket está vacío", "warning");
+        }
+    });
+
+    // Inputs dinámicos para el ticket
+    ['client-name', 'client-rif', 'tax-rate'].forEach(id => {
+        document.getElementById(id).addEventListener('input', UI.updateTicket);
+    });
+
+    document.getElementById('clear-invoice-btn').addEventListener('click', () => {
+        POSController.clearCart();
+        UI.updateTicket();
+    });
 });
 </script>
 </body>

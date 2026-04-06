@@ -1,1 +1,133 @@
-{"products":[{"id":"7591054001859","name":"CEREAL FLIPS CHOCOLATE X 220 GR","price":1699.27,"tax":"G","stockMin":0},{"id":"7591206003252","name":"SNACK DORITOS MEGA QUESO X 150 GR","price":1683.84,"tax":"G","stockMin":0},{"id":"111211836","name":"BOLSA HIELO ARTICO CUBITO GRANDE","price":1024.92,"tax":"G","stockMin":0},{"id":"7597417000707","name":"HARINA LEUDANTE MARY X 900 GR","price":737.16,"tax":"G","stockMin":0},{"id":"7591357020405","name":"AZUCAR MONTALBAN REFINADA 1KG","price":1028.18,"tax":"G","stockMin":0},{"id":"7590006200137","name":"MARGARINA MAVESA X 500 GR","price":1379.88,"tax":"G","stockMin":0},{"id":"PRUEBA","name":"PRUEBA","price":1000,"tax":"E"}],"invoices":[{"numero":"00000001","fecha":"5/4/2026","hora":"11:21 p. m.","cliente":"Consumidor Final","rif":"V-000000000","total":1600.6608}],"config":{"lastInvoiceNumber":2,"defaultTaxRate":12,"boxNumber":"01"}}
+{
+  "products": [
+    {
+      "id": "7591054001859",
+      "name": "CEREAL FLIPS CHOCOLATE X 220 GR",
+      "price": 1699.27,
+      "tax": "G",
+      "stockMin": 0
+    },
+    {
+      "id": "7591206003252",
+      "name": "SNACK DORITOS MEGA QUESO X 150 GR",
+      "price": 1683.84,
+      "tax": "G",
+      "stockMin": 0
+    },
+    {
+      "id": "111211836",
+      "name": "BOLSA HIELO ARTICO CUBITO GRANDE",
+      "price": 1024.92,
+      "tax": "G",
+      "stockMin": 0
+    },
+    {
+      "id": "7597417000707",
+      "name": "HARINA LEUDANTE MARY X 900 GR",
+      "price": 737.16,
+      "tax": "G",
+      "stockMin": 0
+    },
+    {
+      "id": "7591357020405",
+      "name": "AZUCAR MONTALBAN REFINADA 1KG",
+      "price": 1028.18,
+      "tax": "G",
+      "stockMin": 0
+    },
+    {
+      "id": "7590006200137",
+      "name": "MARGARINA MAVESA X 500 GR",
+      "price": 1379.88,
+      "tax": "G",
+      "stockMin": 0
+    },
+    {
+      "id": "PRUEBA",
+      "name": "PRUEBA DE PRODUCTO BASE",
+      "price": 1000,
+      "tax": "E",
+      "suspended": false,
+      "stockMin": 0
+    }
+  ],
+  "invoices": [
+    {
+      "numero": "00000003",
+      "fecha": "6/4/2026",
+      "hora": "02:17 p. m.",
+      "cliente": "ENYERSON FERNANDEZ",
+      "rif": "V-32370953",
+      "tasaIva": 12,
+      "subG": 5132.25,
+      "subE": 0,
+      "iva": 615.87,
+      "total": 5748.12,
+      "items": [
+        {
+          "id": "7591054001859",
+          "name": "CEREAL FLIPS CHOCOLATE X 220 GR",
+          "qty": 1,
+          "price": 1699.27,
+          "tax": "G"
+        },
+        {
+          "id": "7590006200137",
+          "name": "MARGARINA MAVESA X 500 GR",
+          "qty": 1,
+          "price": 1379.88,
+          "tax": "G"
+        },
+        {
+          "id": "7591357020405",
+          "name": "AZUCAR MONTALBAN REFINADA 1KG",
+          "qty": 1,
+          "price": 1028.18,
+          "tax": "G"
+        },
+        {
+          "id": "111211836",
+          "name": "BOLSA HIELO ARTICO CUBITO GRANDE",
+          "qty": 1,
+          "price": 1024.92,
+          "tax": "G"
+        }
+      ]
+    },
+    {
+      "numero": "00000002",
+      "fecha": "6/4/2026",
+      "hora": "02:15 p. m.",
+      "cliente": "CONSUMIDOR FINAL",
+      "rif": "V-000000000",
+      "tasaIva": 12,
+      "subG": 1699.27,
+      "subE": 0,
+      "iva": 203.9124,
+      "total": 1903.1824,
+      "items": [
+        {
+          "id": "7591054001859",
+          "name": "CEREAL FLIPS CHOCOLATE X 220 GR",
+          "qty": 1,
+          "price": 1699.27,
+          "tax": "G"
+        }
+      ]
+    },
+    {
+      "numero": "00000001",
+      "fecha": "5/4/2026",
+      "hora": "11:21 p. m.",
+      "cliente": "Consumidor Final",
+      "rif": "V-000000000",
+      "total": 1600.6608
+    }
+  ],
+  "config": {
+    "lastInvoiceNumber": 4,
+    "defaultTaxRate": 12,
+    "boxNumber": "01",
+    "lastUpdated": "2026-04-06T18:19:18.453Z"
+  }
+}

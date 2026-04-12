@@ -1,6 +1,6 @@
 /**
  * SISTEMA POS PROFESIONAL - Vanilla JS
- * Versión con multi-sucursal, nuevo ticket, rate limiting de 5 min.
+ * Versión con multi-sucursal, nuevo ticket FARMATODO, rate limiting de 5 min.
  */
 
 // --- CONFIGURACIÓN CONSTANTE ---
@@ -18,12 +18,21 @@ const AppState = {
     data: {
         products: [],
         invoices: [],
-        config: { lastInvoiceNumber: 1, defaultTaxRate: 12, boxNumber: "01", lastUpdated: "", activeBranchId: null },
+        config: { 
+            lastInvoiceNumber: 1, 
+            defaultTaxRate: 16,    // Cambiamos a 16% por defecto para igualar FARMATODO
+            boxNumber: "12", 
+            lastUpdated: "", 
+            activeBranchId: null,
+            operatorName: "LEÓN, EUCARIS"   // Nombre del operador por defecto
+        },
         branches: []
     },
     cart: [],
     selectedProductTemp: null,
-    publishHistory: []
+    publishHistory: [],
+    // Contador interno para el número de ticket (puede ser aleatorio o secuencial)
+    ticketCounter: 229450
 };
 
 // --- UTILIDADES ---
@@ -62,7 +71,20 @@ const Utils = {
         }
         const positiveHash = Math.abs(hash);
         const code = positiveHash.toString(36).slice(0, 12).toUpperCase().padEnd(12, 'X');
-        return `TAXAC: ${code}`;
+        return code; // Sin prefijo "TAXAC:" para mostrarlo limpio
+    },
+
+    // Genera número de autorización/lote estilo Z1F0021718
+    generateAuthCode: () => {
+        const prefix = 'Z1F';
+        const randomDigits = Math.floor(Math.random() * 10000000).toString().padStart(7, '0');
+        return prefix + randomDigits;
+    },
+
+    // Incrementa y devuelve número de ticket interno
+    getNextTicketNumber: () => {
+        AppState.ticketCounter += 1;
+        return AppState.ticketCounter;
     }
 };
 
@@ -86,7 +108,6 @@ const API = {
             return false;
         }
 
-        // === RATE LIMITING BASADO EN lastUpdated ===
         const lastUpdated = AppState.data.config.lastUpdated;
         if (lastUpdated) {
             const last = new Date(lastUpdated).getTime();
@@ -102,7 +123,6 @@ const API = {
         }
 
         try {
-            // Obtener SHA actual
             const getRes = await fetch(CONFIG.GITHUB_API_URL, {
                 headers: { 'Authorization': `token ${AppState.token}` }
             });
@@ -110,11 +130,9 @@ const API = {
             const getJson = await getRes.json();
             const sha = getJson.sha;
 
-            // Actualizar timestamp JUSTO antes de publicar
             AppState.data.config.lastUpdated = Utils.getISODate();
             Storage.saveLocal();
 
-            // Preparar payload (PUT)
             const contentString = JSON.stringify(AppState.data, null, 2);
             const contentBase64 = Utils.utf8ToBase64(contentString);
 
@@ -156,17 +174,49 @@ const Storage = {
             if (raw) {
                 const parsed = JSON.parse(raw);
                 AppState.data = parsed;
-                // Asegurar que existan branches y activeBranchId
-                if (!AppState.data.branches) {
+                if (!AppState.data.branches || AppState.data.branches.length === 0) {
+                    // Datos de sucursales por defecto (estilo FARMATODO)
                     AppState.data.branches = [
-                        { id: "farma1", name: "FARMACIA CEREZOS", legalName: "FARMATODO, C.A.", rif: "J-00020200-1", address: { street: "Av Los Guayabitos", center: "CC Expreso Baruta", level: "Nivel 5 Of Unica", urbanization: "Urb La Trinidad", city: "Caracas", phone: "0281-2780820" }, taxacSeed: "IGTVDF4L1KRB" },
-                        { id: "farma2", name: "FARMACIA LOS SAMANES", legalName: "FARMATODO, C.A.", rif: "J-00020201-2", address: { street: "Av Principal de Los Samanes", center: "CC Los Samanes", level: "PB Local 4", urbanization: "Los Samanes", city: "Maracay", phone: "0243-1234567" }, taxacSeed: "A1B2C3D4E5F6" }
+                        {
+                            id: "farma1",
+                            name: "FARMACIA EXPRESO BARUTA",
+                            legalName: "FARMATODO, C.A.",
+                            rif: "J-00020200-1",
+                            address: {
+                                street: "Av Los Guayabitos",
+                                center: "CC Expreso Baruta",
+                                level: "Nivel 5 Of Unica",
+                                urbanization: "Urb La Trinidad",
+                                sector: "(Sector Piedra Azul)",
+                                city: "Caracas",
+                                phone: "0800-FARMATODO"
+                            },
+                            taxacSeed: "IGTVDF4L1KRB"
+                        },
+                        {
+                            id: "farma2",
+                            name: "FARMACIA LOS SAMANES",
+                            legalName: "FARMATODO, C.A.",
+                            rif: "J-00020201-2",
+                            address: {
+                                street: "Av Principal de Los Samanes",
+                                center: "CC Los Samanes",
+                                level: "PB Local 4",
+                                urbanization: "Los Samanes",
+                                sector: "",
+                                city: "Maracay",
+                                phone: "0243-1234567"
+                            },
+                            taxacSeed: "A1B2C3D4E5F6"
+                        }
                     ];
                 }
                 if (!AppState.data.config.activeBranchId) {
                     AppState.data.config.activeBranchId = AppState.data.branches[0]?.id || "farma1";
                 }
                 if (!AppState.data.config.lastUpdated) AppState.data.config.lastUpdated = "";
+                if (!AppState.data.config.operatorName) AppState.data.config.operatorName = "LEÓN, EUCARIS";
+                if (AppState.data.config.defaultTaxRate === undefined) AppState.data.config.defaultTaxRate = 16;
             }
         } catch (e) {
             console.error("Error parseando localStorage", e);
@@ -188,9 +238,10 @@ const Storage = {
             const remoteData = await API.fetchRemoteData();
             if (remoteData) {
                 AppState.data = remoteData;
-                // Validar estructura
                 if (!AppState.data.branches) AppState.data.branches = [];
-                if (!AppState.data.config.activeBranchId && AppState.data.branches.length) AppState.data.config.activeBranchId = AppState.data.branches[0].id;
+                if (!AppState.data.config.activeBranchId && AppState.data.branches.length) 
+                    AppState.data.config.activeBranchId = AppState.data.branches[0].id;
+                if (!AppState.data.config.operatorName) AppState.data.config.operatorName = "LEÓN, EUCARIS";
                 this.saveLocal();
                 UI.renderAll();
                 Utils.showToast("Base de datos sincronizada", "success");
@@ -237,7 +288,6 @@ const Business = {
     generateInvoiceRecord(client, rif, taxRate) {
         const { subG, subE, iva, total } = this.calculateTotals(taxRate);
         const now = new Date();
-        // Número de factura de 9 dígitos (ej. 115005451)
         const invoiceNum = Utils.generatePad(AppState.data.config.lastInvoiceNumber, 9);
         
         const record = {
@@ -317,7 +367,9 @@ const UI = {
             if (remote) {
                 AppState.data = remote;
                 if (!AppState.data.branches) AppState.data.branches = [];
-                if (!AppState.data.config.activeBranchId && AppState.data.branches.length) AppState.data.config.activeBranchId = AppState.data.branches[0].id;
+                if (!AppState.data.config.activeBranchId && AppState.data.branches.length) 
+                    AppState.data.config.activeBranchId = AppState.data.branches[0].id;
+                if (!AppState.data.config.operatorName) AppState.data.config.operatorName = "LEÓN, EUCARIS";
                 Storage.saveLocal();
                 UI.renderAll();
                 Utils.showToast("Base de datos actualizada", "success");
@@ -327,7 +379,6 @@ const UI = {
             }
         });
 
-        // Selector de sucursal
         const branchSelect = document.getElementById('branch-select');
         branchSelect.addEventListener('change', (e) => {
             AppState.data.config.activeBranchId = e.target.value;
@@ -335,7 +386,6 @@ const UI = {
             Utils.showToast(`Sucursal cambiada a ${e.target.options[e.target.selectedIndex].text}`, "info");
         });
 
-        // POS Autocomplete
         const searchInput = document.getElementById('pos-search');
         searchInput.addEventListener('input', (e) => this.handlePosSearch(e.target.value));
         document.addEventListener('click', e => { if(!searchInput.contains(e.target)) document.getElementById('pos-suggestions').style.display='none'; });
@@ -395,15 +445,10 @@ const UI = {
                 if (AppState.data.config.activeBranchId === b.id) option.selected = true;
                 select.appendChild(option);
             });
-        } else {
-            const option = document.createElement('option');
-            option.value = "default";
-            option.textContent = "Sucursal por defecto";
-            select.appendChild(option);
         }
     },
 
-    handlePosSearch(term) {
+    handlePosSearch(term) { /* sin cambios */ 
         term = term.trim().toLowerCase();
         const suggBox = document.getElementById('pos-suggestions');
         if (!term) { suggBox.style.display = 'none'; return; }
@@ -426,7 +471,7 @@ const UI = {
         }
     },
 
-    selectSearchResult(id) {
+    selectSearchResult(id) { /* sin cambios */ 
         const p = AppState.data.products.find(p => p.id === id);
         if (p) {
             document.getElementById('pos-search').value = p.id;
@@ -436,7 +481,7 @@ const UI = {
         document.getElementById('pos-qty').focus();
     },
 
-    handleAddToCart() {
+    handleAddToCart() { /* sin cambios */ 
         const searchVal = document.getElementById('pos-search').value.trim();
         let prod = AppState.selectedProductTemp;
         if (!prod || prod.id !== searchVal) {
@@ -463,7 +508,7 @@ const UI = {
         }
         const client = document.getElementById('pos-client-name').value.trim().toUpperCase();
         const rif = document.getElementById('pos-client-rif').value.trim().toUpperCase();
-        const taxRate = AppState.data.config.defaultTaxRate || 12;
+        const taxRate = AppState.data.config.defaultTaxRate || 16;
         const record = Business.generateInvoiceRecord(client, rif, taxRate);
         this.fillPrintTicket(record, false);
         window.print();
@@ -475,7 +520,7 @@ const UI = {
         document.getElementById('pos-client-rif').value = 'V-000000000';
     },
 
-    handleSaveProduct(e) {
+    handleSaveProduct(e) { /* sin cambios */ 
         e.preventDefault();
         const origId = document.getElementById('form-prod-original-id').value;
         const newId = document.getElementById('form-prod-id').value.trim();
@@ -514,10 +559,10 @@ const UI = {
             ? new Date(AppState.data.config.lastUpdated).toLocaleString('es-VE') 
             : 'Nunca';
         document.getElementById('sys-next-ticket').innerText = Utils.generatePad(AppState.data.config.lastInvoiceNumber, 9);
-        document.getElementById('pos-display-tax').innerText = AppState.data.config.defaultTaxRate || 12;
+        document.getElementById('pos-display-tax').innerText = AppState.data.config.defaultTaxRate || 16;
     },
 
-    renderCart() {
+    renderCart() { /* sin cambios */ 
         const container = document.getElementById('cart-items-container');
         if (!AppState.cart.length) {
             container.innerHTML = '<div style="color:var(--color-text-muted); text-align:center; margin-top:20px;">No hay artículos</div>';
@@ -537,7 +582,7 @@ const UI = {
                 </div>
             `).join('');
         }
-        const taxRate = AppState.data.config.defaultTaxRate || 12;
+        const taxRate = AppState.data.config.defaultTaxRate || 16;
         const { subG, subE, iva, total } = Business.calculateTotals(taxRate);
         document.getElementById('cart-subg').innerText = `Bs ${Utils.formatCurrency(subG)}`;
         document.getElementById('cart-sube').innerText = `Bs ${Utils.formatCurrency(subE)}`;
@@ -545,12 +590,9 @@ const UI = {
         document.getElementById('cart-total').innerText = `Bs ${Utils.formatCurrency(total)}`;
     },
 
-    removeCartItem(id) {
-        Business.removeFromCart(id);
-        this.renderCart();
-    },
+    removeCartItem(id) { Business.removeFromCart(id); this.renderCart(); },
 
-    renderHistory() {
+    renderHistory() { /* sin cambios */ 
         const list = document.getElementById('history-list');
         if (!AppState.data.invoices.length) {
             list.innerHTML = '<div style="padding:10px; color:var(--color-text-muted);">Sin transacciones.</div>';
@@ -568,7 +610,7 @@ const UI = {
         `).join('');
     },
 
-    renderDBTable(filterTerm = '') {
+    renderDBTable(filterTerm = '') { /* sin cambios */ 
         const tbody = document.getElementById('db-table-body');
         let products = AppState.data.products;
         if (filterTerm) {
@@ -593,7 +635,7 @@ const UI = {
         `).join('');
     },
 
-    editProduct(id) {
+    editProduct(id) { /* sin cambios */ 
         const p = AppState.data.products.find(x => x.id === id);
         if (!p) return;
         document.getElementById('form-prod-original-id').value = p.id;
@@ -606,7 +648,7 @@ const UI = {
         document.getElementById('modal-product').classList.add('active');
     },
 
-    showInvoiceDetail(numero) {
+    showInvoiceDetail(numero) { /* sin cambios */ 
         const inv = AppState.data.invoices.find(i => i.numero === numero);
         if (!inv) return;
         document.getElementById('inv-det-num').innerText = `#${inv.numero}`;
@@ -629,54 +671,99 @@ const UI = {
         document.getElementById('modal-invoice').classList.add('active');
     },
 
+    // ========== FUNCIÓN CLAVE: LLENAR TICKET PROFESIONAL ==========
     fillPrintTicket(inv, isReprint) {
         // Obtener sucursal activa
         let branch = AppState.data.branches.find(b => b.id === AppState.data.config.activeBranchId);
         if (!branch && AppState.data.branches.length) branch = AppState.data.branches[0];
         if (!branch) {
-            branch = { name: "Sucursal no definida", rif: "J-00000000-0", address: { street: "", center: "", level: "", urbanization: "", city: "", phone: "" }, taxacSeed: "" };
+            // Fallback
+            branch = {
+                legalName: "FARMATODO, C.A.",
+                rif: "J-00020200-1",
+                address: {
+                    street: "Av Los Guayabitos",
+                    center: "CC Expreso Baruta",
+                    level: "Nivel 5 Of Unica",
+                    urbanization: "Urb La Trinidad",
+                    sector: "(Sector Piedra Azul)",
+                    city: "Caracas",
+                    phone: "0800-FARMATODO"
+                },
+                taxacSeed: "IGTVDF4L1KRB"
+            };
         }
-        const addressLine1 = `${branch.address.street} ${branch.address.center}`.trim();
-        const addressLine2 = `${branch.address.level} ${branch.address.urbanization} ${branch.address.city}`.trim();
+
+        const addr = branch.address;
+        // Construir líneas de dirección
+        const line1 = `${addr.street}, ${addr.center}`;
+        const line2 = `${addr.level}, ${addr.urbanization}`;
+        const line3 = `${addr.sector ? addr.sector + ', ' : ''}${addr.city}`;
+        const phoneLine = `TLP: ${addr.phone}`;
+
+        // Asignar valores a los campos del ticket
+        document.getElementById('t-branch-rif').innerText = branch.rif;
+        document.getElementById('t-branch-legal-name').innerText = branch.legalName;
+        document.getElementById('t-branch-address1').innerText = line1;
+        document.getElementById('t-branch-address2').innerText = line2;
+        document.getElementById('t-branch-address3').innerText = line3;
+        document.getElementById('t-branch-phone').innerText = phoneLine;
+        document.getElementById('t-box-number').innerText = AppState.data.config.boxNumber || "12";
         
-        document.getElementById('t-branch-rif').innerText = `RIF: ${branch.rif}`;
-        document.getElementById('t-branch-name').innerText = branch.name;
-        document.getElementById('t-branch-address1').innerText = addressLine1;
-        document.getElementById('t-branch-address2').innerText = addressLine2;
-        document.getElementById('t-branch-phone').innerText = branch.address.phone;
+        document.getElementById('t-client-rif').innerText = inv.rif;
+        document.getElementById('t-client-name').innerText = inv.cliente;
+        document.getElementById('t-operator').innerText = AppState.data.config.operatorName || "LEÓN, EUCARIS";
+        
+        // Número de ticket interno (simulado)
+        const ticketNum = Utils.getNextTicketNumber();
+        document.getElementById('t-ticket-number').innerText = ticketNum;
         
         document.getElementById('t-invoice-num').innerText = inv.numero;
         document.getElementById('t-date').innerText = inv.fecha;
         document.getElementById('t-time').innerText = inv.hora;
-        document.getElementById('t-client-name').innerText = inv.cliente;
-        document.getElementById('t-client-rif').innerText = inv.rif;
         
+        // Items: formato "Código Descripción (G/E)"
         const tItemsBody = document.getElementById('t-items');
         tItemsBody.innerHTML = inv.items.map(item => `
             <tr>
-                <td class="col-desc">${item.qty} x ${Utils.escapeHtml(item.name)} (${item.tax})</td>
+                <td class="col-desc">${item.id} ${Utils.escapeHtml(item.name)} (${item.tax})</td>
                 <td class="col-price" style="text-align:right;">Bs ${Utils.formatCurrency(item.price * item.qty)}</td>
             </tr>
         `).join('');
         
-        const taxRate = inv.tasaIva.toFixed(2);
-        document.getElementById('t-tax-rate').innerText = taxRate;
+        const taxRate = inv.tasaIva;
+        const taxRateStr = taxRate.toFixed(2).replace('.', ',');
+        document.getElementById('t-tax-rate-display').innerText = taxRateStr;
+        document.getElementById('t-tax-rate-display2').innerText = taxRateStr;
+        
+        document.getElementById('t-exe').innerText = Utils.formatCurrency(inv.subE);
         document.getElementById('t-bi').innerText = Utils.formatCurrency(inv.subG);
         document.getElementById('t-iva').innerText = Utils.formatCurrency(inv.iva);
-        document.getElementById('t-exe').innerText = Utils.formatCurrency(inv.subE);
-        document.getElementById('t-total').innerText = Utils.formatCurrency(inv.total);
         
+        const subtotal = inv.subG + inv.subE + inv.iva;
+        document.getElementById('t-subtotal').innerText = Utils.formatCurrency(subtotal);
+        document.getElementById('t-total').innerText = Utils.formatCurrency(inv.total);
+        document.getElementById('t-total2').innerText = Utils.formatCurrency(inv.total);
+        document.getElementById('t-item-count').innerText = inv.items.length;
+        
+        // Código TAXAC (sin prefijo)
         const taxacCode = Utils.generateTaxacCode(inv, branch.taxacSeed);
         document.getElementById('t-taxac-code').innerText = taxacCode;
         
-        // Generar código de barras con el mismo texto TAXAC
-        try {
-            JsBarcode(document.getElementById('barcode'), taxacCode, { format: "CODE128", width: 2, height: 35, displayValue: false, margin: 0 });
-        } catch(e) { console.warn("Barcode error", e); }
+        // Código de autorización/lote (Z1F...)
+        const authCode = Utils.generateAuthCode();
+        document.getElementById('t-auth-code').innerText = authCode;
         
-        // Opcional: mostrar texto de reimpresión
-        const reprintMark = document.getElementById('t-reprint-mark');
-        if (reprintMark) reprintMark.style.display = isReprint ? 'inline' : 'none';
+        // Generar código de barras con el TAXAC (o con el authCode, pero en la imagen el código de barras corresponde al TAXAC)
+        try {
+            JsBarcode(document.getElementById('barcode'), taxacCode, { 
+                format: "CODE128", 
+                width: 2, 
+                height: 35, 
+                displayValue: false, 
+                margin: 0 
+            });
+        } catch(e) { console.warn("Barcode error", e); }
     },
 
     closeModal(id) {

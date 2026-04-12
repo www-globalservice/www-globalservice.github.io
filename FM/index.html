@@ -22,104 +22,221 @@
         </div>
     </div>
 
-    <div id="app-screen" style="display: none;">
+    <div id="app-screen">
         <header class="topbar">
             <div class="brand">
-                <i class="fas fa-cash-register"></i> POS System
+                <i class="fas fa-cash-register"></i> Sistema POS Profesional
             </div>
-            <div class="nav-links" style="display: flex; align-items: center; gap: 10px;">
-                <select id="store-selector" class="nav-btn" style="background: var(--color-surface); color: var(--color-primary); border: 1px solid var(--color-primary); border-radius: 4px; padding: 4px 8px; font-family: inherit; font-weight: 600; outline: none; cursor: pointer;">
-                </select>
-                <button id="btn-sync" class="nav-btn"><i class="fas fa-sync-alt"></i> Sincronizar</button>
-                <button id="btn-logout" class="nav-btn"><i class="fas fa-sign-out-alt"></i> Salir</button>
+            <div class="branch-selector" style="margin-left: auto; margin-right: 1rem; display: flex; align-items: center; gap: 8px;">
+                <label for="branch-select" style="font-size: 0.8rem; text-transform: none;">Sucursal:</label>
+                <select id="branch-select" style="padding: 6px 10px; border-radius: var(--radius-md); border: 1px solid var(--color-border); background: white;"></select>
+            </div>
+            <div class="nav-links">
+                <button class="nav-btn active" data-target="view-terminal" id="nav-terminal"><i class="fas fa-desktop"></i> <span>Terminal POS</span></button>
+                <button class="nav-btn" data-target="view-database" id="nav-database"><i class="fas fa-database"></i> <span>Base de Datos</span></button>
+                <button class="nav-btn btn-publish" id="btn-publish-github" title="Sincronizar a GitHub"><i class="fas fa-cloud-upload-alt"></i> <span>Publicar</span></button>
             </div>
         </header>
 
-        <div class="pos-layout">
-            <div class="products-section">
-                <div class="search-bar">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="search-input" placeholder="Buscar producto por nombre o código...">
-                </div>
-                <div class="products-grid" id="products-grid">
-                    </div>
-            </div>
+        <main class="main-content">
+            
+            <section id="view-terminal" class="view-section active">
+                <div class="terminal-layout">
+                    <div class="pos-panel">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-title"><i class="fas fa-file-invoice"></i> Nuevo Ticket</h2>
+                                <span style="font-size: 0.8rem; color: var(--color-text-muted);">Tasa IVA Activa: <span id="pos-display-tax">12</span>%</span>
+                            </div>
+                            
+                            <div class="form-group" style="background: #f8fafc; padding: 16px; border-radius: var(--radius-md); border: 1px dashed var(--color-border);">
+                                <div class="form-field full" style="margin-bottom: 8px;">
+                                    <label>Buscador de Artículos</label>
+                                    <div class="autocomplete-wrapper">
+                                        <input type="text" id="pos-search" placeholder="Escribe el código o nombre del producto..." autocomplete="off">
+                                        <ul id="pos-suggestions" class="suggestions-list"></ul>
+                                    </div>
+                                </div>
+                                <div class="form-group" style="width: 100%; margin-bottom:0;">
+                                    <div class="form-field"><label>Cantidad</label><input type="number" id="pos-qty" value="1" min="1"></div>
+                                    <button type="button" id="btn-add-cart" class="btn-primary" style="flex: 1; height: 40px; margin-bottom: 2px;"><i class="fas fa-cart-plus"></i> Añadir</button>
+                                </div>
+                            </div>
 
-            <div class="cart-section">
-                <div class="cart-header">
-                    <h2>Ticket Actual</h2>
-                    <span id="cart-count">0 items</span>
+                            <div class="form-group">
+                                <div class="form-field"><label>Cliente</label><input type="text" id="pos-client-name" value="Consumidor Final" autocomplete="off"></div>
+                                <div class="form-field"><label>RIF / CI</label><input type="text" id="pos-client-rif" value="V-000000000" autocomplete="off"></div>
+                            </div>
+                        </div>
+
+                        <div class="card" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                            <div class="card-header"><h2 class="card-title"><i class="fas fa-shopping-basket"></i> Detalle de Venta</h2></div>
+                            <div id="cart-items-container" style="flex:1; overflow-y: auto; padding-right: 5px; margin-bottom: 16px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: #f8fafc; padding: 10px;">
+                                </div>
+                            
+                            <div style="background: var(--color-primary); color: white; padding: 16px; border-radius: var(--radius-md); margin-bottom: 16px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.9rem;"><span>Subtotal Gravado (G)</span><span id="cart-subg">Bs 0,00</span></div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.9rem;"><span>Subtotal Exento (E)</span><span id="cart-sube">Bs 0,00</span></div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem;"><span>IVA (<span id="cart-tax-rate">12</span>%)</span><span id="cart-iva">Bs 0,00</span></div>
+                                <div style="display: flex; justify-content: space-between; font-size: 1.4rem; font-weight: 700; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 8px;"><span>TOTAL</span><span id="cart-total">Bs 0,00</span></div>
+                            </div>
+
+                            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                                <button type="button" id="btn-cancel-sale" class="btn-outline" style="flex:1;"><i class="fas fa-ban"></i> Cancelar</button>
+                                <button type="button" id="btn-emit-invoice" class="btn-success" style="flex:2; font-size: 1.05rem;"><i class="fas fa-print"></i> Emitir Factura</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="side-panel">
+                        <div class="card" style="flex: 1; display: flex; flex-direction: column;">
+                            <div class="card-header">
+                                <h2 class="card-title"><i class="fas fa-history"></i> Transacciones Recientes</h2>
+                                <span style="font-size: 0.75rem; color: var(--color-text-muted);">Últimas 20</span>
+                            </div>
+                            <div id="history-list" style="overflow-y: auto; flex: 1; padding-right: 5px;">
+                                </div>
+                        </div>
+                        <div class="card" style="background: #eff6ff; border-color: #bfdbfe;">
+                            <h2 class="card-title" style="font-size: 0.95rem; margin-bottom: 10px;"><i class="fas fa-info-circle"></i> Estado del Sistema</h2>
+                            <div style="font-size: 0.8rem; color: var(--color-text-muted); line-height: 1.5;">
+                                <div>Última actualización local: <strong id="sys-last-update">--</strong></div>
+                                <div>Siguiente Ticket: <strong id="sys-next-ticket">--</strong></div>
+                                <div style="margin-top: 8px; font-style: italic;">Recuerda hacer clic en "Publicar" para guardar los cambios en la nube.</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="cart-items" id="cart-items">
+            </section>
+
+            <section id="view-database" class="view-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-boxes"></i> Gestión de Inventario</h2>
+                        <button type="button" id="btn-open-new-prod" class="btn-primary"><i class="fas fa-plus"></i> Nuevo Producto</button>
                     </div>
-                <div class="cart-totals">
-                    <div class="totals-row">
-                        <span>Subtotal:</span>
-                        <span id="cart-subtotal">Bs 0.00</span>
+                    
+                    <div class="form-group" style="background: #f8fafc; padding: 12px; border-radius: var(--radius-md);">
+                        <div class="form-field full">
+                            <input type="text" id="db-search" placeholder="Buscar en base de datos por código o nombre..." autocomplete="off">
+                        </div>
                     </div>
-                    <div class="totals-row">
-                        <span>IVA (12%):</span>
-                        <span id="cart-tax">Bs 0.00</span>
+
+                    <div class="table-container" style="max-height: 60vh;">
+                        <table id="db-table">
+                            <thead>
+                                <tr>
+                                    <th>Código / SKU</th>
+                                    <th>Descripción</th>
+                                    <th>Precio (Bs)</th>
+                                    <th>Imp</th>
+                                    <th>Estado</th>
+                                    <th style="text-align: right;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="db-table-body"></tbody>
+                        </table>
                     </div>
-                    <div class="totals-row total-final">
-                        <span>Total:</span>
-                        <span id="cart-total">Bs 0.00</span>
-                    </div>
-                    <button id="btn-checkout" class="checkout-btn">
-                        <i class="fas fa-print"></i> Facturar e Imprimir
-                    </button>
                 </div>
-            </div>
-        </div>
+            </section>
+
+        </main>
     </div>
 
-    <div id="modal-sync" class="modal">
+    <!-- Modales existentes (sin cambios) -->
+    <div id="modal-product" class="modal-overlay">
         <div class="modal-content">
-            <h2><i class="fas fa-cloud-upload-alt"></i> Sincronizando Base de Datos</h2>
-            <p id="sync-status">Conectando con GitHub...</p>
-            <div class="loader"></div>
+            <button class="modal-close" onclick="UI.closeModal('modal-product')"><i class="fas fa-times"></i></button>
+            <h2 style="margin-bottom: 20px; color: var(--color-primary);" id="modal-product-title">Nuevo Producto</h2>
+            <form id="form-product">
+                <input type="hidden" id="form-prod-original-id">
+                <div class="form-group">
+                    <div class="form-field full"><label>Código SKU (Único)</label><input type="text" id="form-prod-id" required autocomplete="off"></div>
+                    <div class="form-field full"><label>Nombre / Descripción</label><input type="text" id="form-prod-name" required autocomplete="off"></div>
+                    <div class="form-field"><label>Precio Unitario (Bs)</label><input type="number" id="form-prod-price" step="0.01" min="0.01" required></div>
+                    <div class="form-field"><label>Tipo Impuesto</label><select id="form-prod-tax"><option value="G">Gravado (G)</option><option value="E">Exento (E)</option></select></div>
+                    <div class="form-field full" style="margin-top: 16px;"><button type="submit" class="btn-primary" style="width: 100%;"><i class="fas fa-save"></i> Guardar Producto</button></div>
+                </div>
+            </form>
         </div>
     </div>
 
+    <div id="modal-sync" class="modal-overlay">
+        <div class="modal-content" style="max-width: 450px; text-align: center;">
+            <i class="fas fa-cloud-download-alt" style="font-size: 3rem; color: var(--color-primary); margin-bottom: 16px;"></i>
+            <h2 style="margin-bottom: 10px;">Sincronización de Base de Datos</h2>
+            <p style="color: var(--color-text-muted); margin-bottom: 20px; font-size: 0.95rem;">Hemos encontrado datos locales. ¿Deseas utilizar la versión guardada en este dispositivo o descargar la última versión de GitHub?</p>
+            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                <button type="button" id="btn-sync-local" class="btn-outline" style="flex: 1;"><i class="fas fa-hdd"></i> Usar Local</button>
+                <button type="button" id="btn-sync-remote" class="btn-primary" style="flex: 1;"><i class="fas fa-cloud"></i> Descargar Nube</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-invoice" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" onclick="UI.closeModal('modal-invoice')"><i class="fas fa-times"></i></button>
+            <h2 style="margin-bottom: 16px; color: var(--color-primary);">Detalle de Factura <span id="inv-det-num"></span></h2>
+            <div style="background: #f8fafc; padding: 12px; border-radius: var(--radius-md); margin-bottom: 16px; font-size: 0.9rem;">
+                <div><strong>Cliente:</strong> <span id="inv-det-cli"></span></div>
+                <div><strong>RIF/CI:</strong> <span id="inv-det-rif"></span></div>
+                <div><strong>Fecha/Hora:</strong> <span id="inv-det-date"></span></div>
+            </div>
+            <div class="table-container" style="margin-bottom: 16px; max-height: 200px;">
+                <table><thead><tr><th>Cant</th><th>Descripción</th><th style="text-align:right;">Total</th></tr></thead><tbody id="inv-det-items"></tbody></table>
+            </div>
+            <div style="text-align: right; font-size: 1.2rem; font-weight: 700; margin-bottom: 20px;">TOTAL: <span id="inv-det-total"></span></div>
+            <button type="button" id="btn-reprint-invoice" class="btn-primary" style="width: 100%;"><i class="fas fa-print"></i> Reimprimir Copia</button>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- NUEVO TICKET FISCAL (rediseñado) -->
     <div id="print-container">
-        <div class="ticket" id="ticket">
-            <div class="ticket-center" style="font-weight:bold; font-size:14px; margin-bottom:5px;">SEHR!</div>
+        <div id="ticket" class="ticket">
             <div class="ticket-center">
-                RIF: <span id="t-store-rif"></span><br>
-                <strong id="t-store-name"></strong><br>
-                <span id="t-store-address"></span><br>
-                Teléfono: <span id="t-store-phone"></span>
+                <strong>SEHR!</strong><br>
+                <span id="t-branch-rif">RIF: </span><br>
+                <strong><span id="t-branch-name"></span></strong><br>
+                <span id="t-branch-address1"></span><br>
+                <span id="t-branch-address2"></span><br>
+                Teléfono: <span id="t-branch-phone"></span>
             </div>
-            
-            <div class="ticket-center" style="margin-top:8px;">
-                TICKET: <span id="t-reprint-mark" style="display:none;">(COPIA) </span><span id="t-ticket-num"></span><br>
-                FECHA: <span id="t-date"></span><br>
-                FACTURA: <span id="t-invoice-num"></span><br>
-                HORA: <span id="t-time"></span>
+            <div class="divider"></div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>FACTURA: <strong id="t-invoice-num"></strong></span>
+                <span>FECHA: <span id="t-date"></span></span>
+                <span>HORA: <span id="t-time"></span></span>
             </div>
-            
             <div class="divider"></div>
-            <table class="items-table"><tbody id="t-items"></tbody></table>
+            <div class="ticket-left">
+                CLIENTE: <span id="t-client-name"></span><br>
+                RIF/CI: <span id="t-client-rif"></span>
+            </div>
             <div class="divider"></div>
-            
+            <table class="items-table">
+                <thead><tr><th>Cant</th><th>Descripción</th><th style="text-align:right;">Precio</th></tr></thead>
+                <tbody id="t-items"></tbody>
+            </table>
+            <div class="divider"></div>
             <div class="totals-section">
-                <div class="totals-row"><span>BI G (<span id="t-tax-rate">12.00</span>%)</span><span>Bs <span id="t-bi"></span></span></div>
-                <div class="totals-row"><span>IVA G (<span id="t-tax-rate2">12.00</span>%)</span><span>Bs <span id="t-iva"></span></span></div>
+                <div class="totals-row"><span>BASE IMPONIBLE (G)</span><span>Bs <span id="t-bi"></span></span></div>
+                <div class="totals-row"><span>IVA (<span id="t-tax-rate">12</span>%)</span><span>Bs <span id="t-iva"></span></span></div>
                 <div class="totals-row"><span>EXENTO (E)</span><span>Bs <span id="t-exe"></span></span></div>
                 <div class="thick-divider"></div>
                 <div class="totals-row total-final"><span>TOTAL</span><span>Bs <span id="t-total"></span></span></div>
-                <div class="totals-row"><span>EFECTIVO</span><span>Bs <span id="t-efectivo"></span></span></div>
             </div>
-            
             <div class="divider"></div>
-            <div id="t-control-codes" class="ticket-center" style="font-size: 10px; line-height: 1.2; word-break: break-all; margin-bottom: 5px;"></div>
-            
             <div class="ticket-center">
-                <svg id="barcode" style="width:100%; height:40px;"></svg>
+                *PERIODOS: 30 días**<br>
+                *PAGO POR DETENIDOS: 50 días**<br>
+                <strong><span id="t-taxac-code"></span></strong><br>
+                <svg id="barcode" style="width:100%; height:35px; margin-top:5px;"></svg>
             </div>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="https://www-globalservice.github.io/FM/script.js"></script>
 </body>
 </html>

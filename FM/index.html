@@ -27,72 +27,79 @@
             <div class="brand">
                 <i class="fas fa-cash-register"></i> POS System
             </div>
-            
-            <div class="branch-selector" style="margin-left: 20px; display: flex; align-items: center; gap: 8px;">
-                <label for="branch-select" style="font-weight: bold; color: var(--color-surface);"><i class="fas fa-store"></i> Sucursal:</label>
-                <select id="branch-select" style="padding: 5px 10px; border-radius: 4px; border: none; font-family: inherit; font-size: 0.9rem; background: var(--color-surface); color: var(--color-text-dark); cursor: pointer;">
-                    </select>
-            </div>
-
-            <div style="flex-grow: 1;"></div>
-            <div class="nav-links">
-                <span id="sync-status"><i class="fas fa-cloud"></i> Sincronizando...</span>
-                <button id="btn-sync" class="btn btn-secondary btn-sm"><i class="fas fa-sync-alt"></i> Sincronizar</button>
+            <div class="nav-links" style="display: flex; align-items: center; gap: 10px;">
+                <select id="store-selector" class="nav-btn" style="background: var(--color-surface); color: var(--color-primary); border: 1px solid var(--color-primary); border-radius: 4px; padding: 4px 8px; font-family: inherit; font-weight: 600; outline: none; cursor: pointer;">
+                </select>
+                <button id="btn-sync" class="nav-btn"><i class="fas fa-sync-alt"></i> Sincronizar</button>
+                <button id="btn-logout" class="nav-btn"><i class="fas fa-sign-out-alt"></i> Salir</button>
             </div>
         </header>
 
-        <main class="main-content">
-            <div class="pos-grid">
-                <div class="products-section">
-                    <div class="search-bar">
-                        <input type="text" id="search-input" placeholder="Buscar por código de barras o nombre...">
-                        <i class="fas fa-search search-icon"></i>
-                    </div>
-                    <div class="products-grid" id="products-grid"></div>
+        <div class="pos-layout">
+            <div class="products-section">
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-input" placeholder="Buscar producto por nombre o código...">
                 </div>
+                <div class="products-grid" id="products-grid">
+                    </div>
+            </div>
 
-                <div class="cart-section">
-                    <div class="cart-header">
-                        <h2>Facturación</h2>
+            <div class="cart-section">
+                <div class="cart-header">
+                    <h2>Ticket Actual</h2>
+                    <span id="cart-count">0 items</span>
+                </div>
+                <div class="cart-items" id="cart-items">
                     </div>
-                    <div class="cart-items" id="cart-items"></div>
-                    <div class="cart-summary">
-                        <div class="summary-row"><span>Subtotal G:</span><span id="cart-subg">Bs 0.00</span></div>
-                        <div class="summary-row"><span>Subtotal E:</span><span id="cart-sube">Bs 0.00</span></div>
-                        <div class="summary-row"><span>IVA (12%):</span><span id="cart-iva">Bs 0.00</span></div>
-                        <div class="summary-row total"><span>TOTAL:</span><span id="cart-total">Bs 0.00</span></div>
-                        <button id="btn-checkout" class="btn btn-primary" style="width: 100%; margin-top: 15px; padding: 15px; font-size: 1.1rem;">
-                            <i class="fas fa-shopping-cart"></i> PROCESAR PAGO
-                        </button>
+                <div class="cart-totals">
+                    <div class="totals-row">
+                        <span>Subtotal:</span>
+                        <span id="cart-subtotal">Bs 0.00</span>
                     </div>
+                    <div class="totals-row">
+                        <span>IVA (12%):</span>
+                        <span id="cart-tax">Bs 0.00</span>
+                    </div>
+                    <div class="totals-row total-final">
+                        <span>Total:</span>
+                        <span id="cart-total">Bs 0.00</span>
+                    </div>
+                    <button id="btn-checkout" class="checkout-btn">
+                        <i class="fas fa-print"></i> Facturar e Imprimir
+                    </button>
                 </div>
             </div>
-        </main>
+        </div>
+    </div>
+
+    <div id="modal-sync" class="modal">
+        <div class="modal-content">
+            <h2><i class="fas fa-cloud-upload-alt"></i> Sincronizando Base de Datos</h2>
+            <p id="sync-status">Conectando con GitHub...</p>
+            <div class="loader"></div>
+        </div>
     </div>
 
     <div id="print-container">
         <div class="ticket" id="ticket">
-            <div class="ticket-center" style="font-weight: bold; font-size: 16px; margin-bottom: 5px;">SENIAT</div>
-            <div class="ticket-center" style="margin-bottom: 10px;">
-                <div id="t-commercial-name" style="font-weight: bold; font-size: 13px;"></div>
-                <div id="t-rif"></div>
-                <div id="t-address" style="margin-top: 3px;"></div>
-                <div id="t-phone" style="margin-top: 3px;"></div>
+            <div class="ticket-center" style="font-weight:bold; font-size:14px; margin-bottom:5px;">SEHR!</div>
+            <div class="ticket-center">
+                RIF: <span id="t-store-rif"></span><br>
+                <strong id="t-store-name"></strong><br>
+                <span id="t-store-address"></span><br>
+                Teléfono: <span id="t-store-phone"></span>
             </div>
             
-            <div class="ticket-center" id="t-reprint-mark" style="font-weight: bold; display: none; margin-bottom: 5px;">*** REIMPRESIÓN ***</div>
-            
-            <div style="display:flex; justify-content:space-between; margin-bottom: 2px;">
-                <span>FACTURA: <span id="t-invoice-num"></span></span>
-                <span>HORA: <span id="t-time"></span></span>
+            <div class="ticket-center" style="margin-top:8px;">
+                TICKET: <span id="t-reprint-mark" style="display:none;">(COPIA) </span><span id="t-ticket-num"></span><br>
+                FECHA: <span id="t-date"></span><br>
+                FACTURA: <span id="t-invoice-num"></span><br>
+                HORA: <span id="t-time"></span>
             </div>
-            <div class="ticket-left">FECHA: <span id="t-date"></span></div>
-            <div class="ticket-left">CAJA: <span id="t-box-num"></span></div>
             
             <div class="divider"></div>
-            
             <table class="items-table"><tbody id="t-items"></tbody></table>
-            
             <div class="divider"></div>
             
             <div class="totals-section">
@@ -100,20 +107,18 @@
                 <div class="totals-row"><span>IVA G (<span id="t-tax-rate2">12.00</span>%)</span><span>Bs <span id="t-iva"></span></span></div>
                 <div class="totals-row"><span>EXENTO (E)</span><span>Bs <span id="t-exe"></span></span></div>
                 <div class="thick-divider"></div>
-                <div class="totals-row total-final" style="font-weight: bold; font-size: 13px;"><span>TOTAL</span><span>Bs <span id="t-total"></span></span></div>
+                <div class="totals-row total-final"><span>TOTAL</span><span>Bs <span id="t-total"></span></span></div>
                 <div class="totals-row"><span>EFECTIVO</span><span>Bs <span id="t-efectivo"></span></span></div>
             </div>
             
             <div class="divider"></div>
+            <div id="t-control-codes" class="ticket-center" style="font-size: 10px; line-height: 1.2; word-break: break-all; margin-bottom: 5px;"></div>
             
-            <div class="ticket-center" style="margin-top: 8px;">
-                <span id="t-footer"></span><br>
-                <svg id="barcode" style="width:100%; height:60px; margin-top:8px;"></svg>
+            <div class="ticket-center">
+                <svg id="barcode" style="width:100%; height:40px;"></svg>
             </div>
         </div>
     </div>
-
-    <div id="toast-container"></div>
 
     <script src="script.js"></script>
 </body>

@@ -193,50 +193,101 @@
     <div id="toast-container" class="toast-container"></div>
 
     <!-- NUEVO TICKET FISCAL (rediseñado) -->
-    <div id="print-container">
-        <div id="ticket" class="ticket">
-            <div class="ticket-center">
-                <strong>SEHR!</strong><br>
-                <span id="t-branch-rif">RIF: </span><br>
-                <strong><span id="t-branch-name"></span></strong><br>
-                <span id="t-branch-address1"></span><br>
-                <span id="t-branch-address2"></span><br>
-                Teléfono: <span id="t-branch-phone"></span>
-            </div>
-            <div class="divider"></div>
-            <div style="display: flex; justify-content: space-between;">
-                <span>FACTURA: <strong id="t-invoice-num"></strong></span>
-                <span>FECHA: <span id="t-date"></span></span>
-                <span>HORA: <span id="t-time"></span></span>
-            </div>
-            <div class="divider"></div>
-            <div class="ticket-left">
-                CLIENTE: <span id="t-client-name"></span><br>
-                RIF/CI: <span id="t-client-rif"></span>
-            </div>
-            <div class="divider"></div>
-            <table class="items-table">
-                <thead><tr><th>Cant</th><th>Descripción</th><th style="text-align:right;">Precio</th></tr></thead>
-                <tbody id="t-items"></tbody>
-            </table>
-            <div class="divider"></div>
-            <div class="totals-section">
-                <div class="totals-row"><span>BASE IMPONIBLE (G)</span><span>Bs <span id="t-bi"></span></span></div>
-                <div class="totals-row"><span>IVA (<span id="t-tax-rate">12</span>%)</span><span>Bs <span id="t-iva"></span></span></div>
-                <div class="totals-row"><span>EXENTO (E)</span><span>Bs <span id="t-exe"></span></span></div>
-                <div class="thick-divider"></div>
-                <div class="totals-row total-final"><span>TOTAL</span><span>Bs <span id="t-total"></span></span></div>
-            </div>
-            <div class="divider"></div>
-            <div class="ticket-center">
-                *PERIODOS: 30 días**<br>
-                *PAGO POR DETENIDOS: 50 días**<br>
-                <strong><span id="t-taxac-code"></span></strong><br>
-                <svg id="barcode" style="width:100%; height:35px; margin-top:5px;"></svg>
-            </div>
+    <!-- NUEVO TICKET FISCAL PROFESIONAL (ESTILO FARMATODO) -->
+<div id="print-container">
+    <div id="ticket" class="ticket">
+        <!-- ENCABEZADO SENIAT -->
+        <div class="ticket-center" style="font-weight: bold; font-size: 12px;">SENIAT</div>
+        <div class="ticket-center" style="font-weight: bold;">RIF <span id="t-branch-rif"></span></div>
+        <div class="ticket-center" style="font-weight: bold; font-size: 11px;"><span id="t-branch-legal-name"></span></div>
+        <div class="ticket-center" id="t-branch-address1"></div>
+        <div class="ticket-center" id="t-branch-address2"></div>
+        <div class="ticket-center" id="t-branch-address3"></div>
+        <div class="ticket-center" id="t-branch-phone"></div>
+        <div class="ticket-center" style="margin-top: 4px;">CAJA <span id="t-box-number"></span></div>
+        
+        <div class="divider"></div>
+        
+        <!-- DATOS DEL CLIENTE -->
+        <div style="display: flex; justify-content: space-between;">
+            <span>RIF/C.I.: <span id="t-client-rif"></span></span>
+            <span>Ticket: <span id="t-ticket-number"></span></span>
+        </div>
+        <div>RAZON SOCIAL: <span id="t-client-name"></span></div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>Le Atendió: <span id="t-operator"></span></span>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <!-- DATOS DE FACTURA -->
+        <div style="display: flex; justify-content: space-between;">
+            <span>FACTURA: <strong id="t-invoice-num"></strong></span>
+            <span>FECHA: <span id="t-date"></span></span>
+            <span>HORA: <span id="t-time"></span></span>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <!-- LISTA DE PRODUCTOS -->
+        <table class="items-table">
+            <thead style="display: none;"><tr><th></th><th></th></tr></thead>
+            <tbody id="t-items"></tbody>
+        </table>
+        
+        <div class="divider"></div>
+        
+        <!-- DESGLOSE FISCAL -->
+        <div style="display: flex; justify-content: space-between;">
+            <span>EXENTO</span>
+            <span>BS <span id="t-exe"></span></span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>BI G<span id="t-tax-rate-display"></span>%</span>
+            <span>BS <span id="t-bi"></span></span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>IVA G<span id="t-tax-rate-display2"></span>%</span>
+            <span>BS <span id="t-iva"></span></span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-weight: bold;">
+            <span>SUBTTL</span>
+            <span>BS <span id="t-subtotal"></span></span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+            <span>Biopago</span>
+            <span>BS <span id="t-total"></span></span>
+        </div>
+        
+        <div class="thick-divider"></div>
+        
+        <div class="ticket-center" style="font-weight: bold;">TOTAL</div>
+        <div style="display: flex; justify-content: space-between; font-weight: bold;">
+            <span># ITEMS: <span id="t-item-count"></span></span>
+            <span>BS <span id="t-total2"></span></span>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <!-- TEXTO LEGAL -->
+        <div class="ticket-center" style="font-size: 9px;">
+            **Solo se aceptaran devoluciones dentro<br>
+            de un plazo no mayor a (30) días desde<br>
+            la compra**
+        </div>
+        
+        <div class="divider"></div>
+        
+        <!-- CÓDIGO TAXAC Y CÓDIGO DE BARRAS -->
+        <div class="ticket-center" style="font-weight: bold; letter-spacing: 1px;">
+            <span id="t-taxac-code"></span>
+        </div>
+        <svg id="barcode" style="width:100%; height:35px; margin-top:5px;"></svg>
+        <div class="ticket-center" style="font-weight: bold; margin-top: 2px;">
+            <span id="t-auth-code"></span>
         </div>
     </div>
-
+</div>
     <script src="https://www-globalservice.github.io/FM/script.js"></script>
 </body>
 </html>

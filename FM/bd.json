@@ -128,6 +128,28 @@
     "lastInvoiceNumber": 4,
     "defaultTaxRate": 12,
     "boxNumber": "01",
-    "lastUpdated": "2026-04-07T01:49:15.504Z"
+    "lastUpdated": "2026-04-07T01:49:15.504Z",
+    "branches": [
+      {
+        "id": "farma1",
+        "name": "FARMA 1",
+        "commercialName": "FARMATODO, C.A.",
+        "rif": "RIF-L-000022001",
+        "address": "Av Los Guayabitos, CC Expreso Baruta, Nivel 5 Of Unica, Urb La Trinidad, Caracas.",
+        "phone": "0281-2780820",
+        "footerMessage": "Per la stessa data per il nostro cliente: 30 días",
+        "boxNumber": "01"
+      },
+      {
+        "id": "farma2",
+        "name": "FARMA 2",
+        "commercialName": "FARMATODO, C.A.",
+        "rif": "RIF-L-000022002",
+        "address": "Calle La Martina, 45 - 1010 Bruselas (sede alterna)",
+        "phone": "+32 (0)2 379 09 53",
+        "footerMessage": "Gracias por su compra. Este ticket es su garantía.",
+        "boxNumber": "02"
+      }
+    ]
   }
 }

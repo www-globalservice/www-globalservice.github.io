@@ -1,7 +1,6 @@
 /**
  * SISTEMA POS PROFESIONAL - Vanilla JS
  * Arquitectura modular y segura.
- * MODIFICADO: Ticket fiscal con formato SEHR!, múltiples sucursales, control de publicación 5min, 11 dígitos factura.
  */
 
 // --- CONFIGURACIÓN CONSTANTE ---
@@ -9,45 +8,25 @@ const CONFIG = {
     AUTH_KEY: "00TANGOECHOSOECHONOVEMBER1039",
     GITHUB_API_URL: "https://api.github.com/repos/www-globalservice/www-globalservice.github.io/contents/FM/bd.json",
     GITHUB_RAW_URL: "https://www-globalservice.github.io/FM/bd.json",
-    LOCAL_STORAGE_KEY: "pos_db_data",
-    PUBLISH_RATE_LIMIT_MIN: 1,
-    PUBLISH_MAX_CALLS: 5
+    LOCAL_STORAGE_KEY: "pos_db_data"
 };
 
 // --- ESTADO GLOBAL (Memoria) ---
 const AppState = {
-    token: null,
-    data: {
+    token: null,          // Solo en RAM
+    data: {               // Estructura BD
         products: [],
         invoices: [],
-        config: {
-            lastInvoiceNumber: 1,
-            defaultTaxRate: 12,
+        config: { 
+            lastInvoiceNumber: 1, 
+            defaultTaxRate: 12, 
             lastUpdated: "",
-            activeBranchId: "farma1",
-            branches: [
-                {
-                    id: "farma1",
-                    name: "FARMA 1 - BARUTA",
-                    rif: "J-00020200-1",
-                    address: "Av Los Guayabitos, CC Expreso Baruta. Nivel 5 Of Unica, Urb La Trinidad. Caracas.",
-                    phone: "0281-2780820",
-                    caja: "01"
-                },
-                {
-                    id: "farma2",
-                    name: "FARMA 2 - CHACAO",
-                    rif: "J-00020200-2",
-                    address: "Av. Francisco de Miranda, Centro Lido. Piso 2. Chacao.",
-                    phone: "0212-5554433",
-                    caja: "02"
-                }
-            ]
+            branches: [] // Nuevo arreglo para sucursales
         }
     },
     cart: [],
     selectedProductTemp: null,
-    publishHistory: []
+    activeBranch: null    // Referencia a la sucursal activa en RAM
 };
 
 // --- UTILIDADES ---
@@ -56,708 +35,425 @@ const Utils = {
     parseCurrency: (val) => parseFloat(val),
     escapeHtml: (str) => {
         if (!str) return '';
-        return String(str).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
+        return String(str).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[m]);
     },
-    generatePad: (num, size = 11) => String(num).padStart(size, '0'),  // AHORA 11 DÍGITOS
-    utf8ToBase64: (str) => btoa(unescape(encodeURIComponent(str))),
     showToast: (message, type = 'info') => {
         const container = document.getElementById('toast-container');
+        if (!container) return;
         const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        const icons = { success: 'fa-check-circle', error: 'fa-exclamation-triangle', info: 'fa-info-circle', warning: 'fa-exclamation-circle' };
-        toast.innerHTML = `<i class="fas ${icons[type]}"></i> <span>${message}</span>`;
+        toast.className = `toast toast-${type} animate__animated animate__fadeInUp`;
+        toast.innerHTML = `<i class="fas fa-info-circle"></i> ${message}`;
         container.appendChild(toast);
         setTimeout(() => {
-            toast.classList.add('fade-out');
-            toast.addEventListener('animationend', () => toast.remove());
-        }, 4000);
-    },
-    getISODate: () => new Date().toISOString(),
-    // Generador de ISBN estáticos (desde 074-4 hasta 279-3)
-    getAllStaticISBNs: () => {
-        const isbns = [];
-        // Patrón base: 978-84-7507-XXX-Y
-        // Según la imagen, los números van desde 074 hasta 279, con dígito de control variable.
-        // Para cumplir con la solicitud exacta, se genera un rango completo (ajustable manualmente).
-        for (let i = 74; i <= 279; i++) {
-            let num = i.toString().padStart(3, '0');
-            // Dígito de control simulado (no es real, pero visualmente cumple)
-            let checksum = (i % 10).toString();
-            isbns.push(`ISBN: 978-84-7507-${num}-${checksum}`);
-        }
-        // Nota: si se requiere una lista fija y exacta, reemplazar este bucle por la lista literal.
-        return isbns;
+            toast.classList.replace('animate__fadeInUp', 'animate__fadeOutDown');
+            setTimeout(() => toast.remove(), 500);
+        }, 3000);
     }
 };
 
-// --- MÓDULO API GITHUB ---
+// --- GESTIÓN LOCAL ---
+const Storage = {
+    saveLocal() {
+        localStorage.setItem(CONFIG.LOCAL_STORAGE_KEY, JSON.stringify(AppState.data));
+    },
+    loadLocal() {
+        const local = localStorage.getItem(CONFIG.LOCAL_STORAGE_KEY);
+        if (local) {
+            try {
+                AppState.data = JSON.parse(local);
+                return true;
+            } catch (e) {
+                console.error("Error leyendo caché local:", e);
+            }
+        }
+        return false;
+    }
+};
+
+// --- GESTIÓN DE SUCURSALES (NUEVO) ---
+const BranchManager = {
+    init() {
+        // Asegurar retrocompatibilidad: crear ramas por defecto si no existen
+        if (!AppState.data.config.branches || AppState.data.config.branches.length === 0) {
+            AppState.data.config.branches = [
+                {
+                    "id": "farma1",
+                    "name": "FARMA 1",
+                    "commercialName": "FARMATODO, C.A.",
+                    "rif": "RIF-L-000022001",
+                    "address": "Av Los Guayabitos, CC Expreso Baruta, Nivel 5 Of Unica, Urb La Trinidad, Caracas.",
+                    "phone": "0281-2780820",
+                    "footerMessage": "Per la stessa data per il nostro cliente: 30 días",
+                    "boxNumber": "01"
+                },
+                {
+                    "id": "farma2",
+                    "name": "FARMA 2",
+                    "commercialName": "FARMATODO, C.A.",
+                    "rif": "RIF-L-000022002",
+                    "address": "Calle La Martina, 45 - 1010 Bruselas (sede alterna)",
+                    "phone": "+32 (0)2 379 09 53",
+                    "footerMessage": "Gracias por su compra. Este ticket es su garantía.",
+                    "boxNumber": "02"
+                }
+            ];
+        }
+
+        const select = document.getElementById('branch-select');
+        if (!select) return;
+
+        // Poblar el selector
+        select.innerHTML = AppState.data.config.branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+
+        // Recuperar última sucursal seleccionada
+        const savedBranchId = localStorage.getItem('pos_active_branch_id');
+        let active = AppState.data.config.branches.find(b => b.id === savedBranchId);
+        
+        if (!active) {
+            active = AppState.data.config.branches[0]; // Fallback a la primera
+        }
+
+        select.value = active.id;
+        AppState.activeBranch = active;
+
+        // Escuchar cambios
+        select.addEventListener('change', (e) => {
+            const selected = AppState.data.config.branches.find(b => b.id === e.target.value);
+            if (selected) {
+                AppState.activeBranch = selected;
+                localStorage.setItem('pos_active_branch_id', selected.id);
+                Utils.showToast(`Sucursal cambiada a: ${selected.name}`, "info");
+            }
+        });
+    }
+};
+
+// --- GESTIÓN DE RED (API) ---
 const API = {
-    async fetchRemoteData(cacheBust = true) {
-        const url = cacheBust ? `${CONFIG.GITHUB_RAW_URL}?t=${new Date().getTime()}` : CONFIG.GITHUB_RAW_URL;
+    async fetchRemoteData() {
         try {
-            const res = await fetch(url);
-            if (!res.ok) throw new Error('Error al descargar bd.json');
-            return await res.json();
-        } catch (e) {
-            console.error(e);
-            return null;
+            const response = await fetch(`${CONFIG.GITHUB_RAW_URL}?t=${new Date().getTime()}`);
+            if (response.ok) {
+                const remoteData = await response.json();
+                AppState.data = remoteData;
+                Storage.saveLocal();
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error("Error conectando a GitHub:", error);
+            return false;
         }
     },
 
     async publishData() {
         if (!AppState.token) {
-            Utils.showToast("No autorizado. Token ausente.", "error");
+            Utils.showToast("No autorizado. Inserte llave.", "danger");
             return false;
         }
 
-        // --- VERIFICACIÓN DE CONFLICTO Y FRECUENCIA (5 minutos) ---
-        try {
-            // 1. Obtener datos remotos actuales (con cache bust)
-            const remoteData = await this.fetchRemoteData(true);
-            if (!remoteData) throw new Error("No se pudo obtener datos remotos para verificar conflicto.");
+        // CONTROL DE PUBLICACIÓN BASADO EN TIEMPO (5 MINUTOS)
+        if (AppState.data.config.lastUpdated) {
+            const now = new Date();
+            const last = new Date(AppState.data.config.lastUpdated);
+            const diffMinutes = (now - last) / (1000 * 60);
 
-            const remoteLastUpdated = remoteData.config?.lastUpdated;
-            const localLastUpdated = AppState.data.config.lastUpdated;
-
-            if (remoteLastUpdated && localLastUpdated) {
-                const remoteDate = new Date(remoteLastUpdated);
-                const localDate = new Date(localLastUpdated);
-                const diffMs = localDate - remoteDate; // positiva si local es más reciente
-
-                // Caso 2: Remoto más reciente (conflicto)
-                if (remoteDate > localDate) {
-                    Utils.showToast("Error: La base de datos fue modificada externamente. Por favor, recarga la página para obtener los últimos cambios antes de publicar.", "error");
-                    return false;
-                }
-                // Caso 3: Local más reciente pero diferencia menor a 5 minutos
-                if (diffMs > 0 && diffMs < 300000) {
-                    const secondsLeft = Math.ceil((300000 - diffMs) / 1000);
-                    Utils.showToast(`Espera ${secondsLeft} segundos para volver a publicar.`, "warning");
-                    return false;
-                }
-                // Caso 1: Local más reciente por más de 5 minutos -> permitir publicación
+            if (diffMinutes < 5) {
+                const waitSeconds = Math.ceil((5 - diffMinutes) * 60);
+                const waitMins = Math.floor(waitSeconds / 60);
+                const waitSecs = waitSeconds % 60;
+                Utils.showToast(`Publicación bloqueada. Deben transcurrir 5 min desde la última sincronización. Próximo intento en ${waitMins}m ${waitSecs}s.`, "warning");
+                return false;
             }
-        } catch (err) {
-            console.error("Error en verificación previa a publicación:", err);
-            Utils.showToast("No se pudo verificar el estado remoto. Publicación cancelada.", "error");
-            return false;
         }
 
-        // Rate Limiting adicional por número de llamadas (opcional, pero mantenemos)
-        const now = Date.now();
-        AppState.publishHistory = AppState.publishHistory.filter(time => now - time < CONFIG.PUBLISH_RATE_LIMIT_MIN * 60000);
-        if (AppState.publishHistory.length >= CONFIG.PUBLISH_MAX_CALLS) {
-            Utils.showToast(`Límite de publicaciones alcanzado. Intenta en 1 minuto.`, "warning");
-            return false;
-        }
+        document.getElementById('sync-status').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Subiendo...';
 
         try {
-            // Obtener SHA actual
-            const getRes = await fetch(CONFIG.GITHUB_API_URL, {
-                headers: { 'Authorization': `token ${AppState.token}` }
+            // Obtener el SHA actual del archivo para poder sobreescribirlo
+            let sha = "";
+            const getResp = await fetch(CONFIG.GITHUB_API_URL, {
+                headers: { "Authorization": `token ${AppState.token}` }
             });
-            if (!getRes.ok) throw new Error("No se pudo obtener el archivo del repositorio. Verifica el token y permisos.");
-            const getJson = await getRes.json();
-            const sha = getJson.sha;
+            if (getResp.ok) {
+                const getJson = await getResp.json();
+                sha = getJson.sha;
+            }
 
-            // ACTUALIZAR TIMESTAMP LOCAL JUSTO ANTES DEL COMMIT
-            AppState.data.config.lastUpdated = Utils.getISODate();
-            Storage.saveLocal(); // guardar localmente con nuevo timestamp
-
-            // Preparar payload (PUT)
-            const contentString = JSON.stringify(AppState.data, null, 2);
-            const contentBase64 = Utils.utf8ToBase64(contentString);
-
-            const putRes = await fetch(CONFIG.GITHUB_API_URL, {
-                method: 'PUT',
+            // Codificar contenido
+            const content = btoa(unescape(encodeURIComponent(JSON.stringify(AppState.data, null, 2))));
+            
+            const response = await fetch(CONFIG.GITHUB_API_URL, {
+                method: "PUT",
                 headers: {
-                    'Authorization': `token ${AppState.token}`,
-                    'Content-Type': 'application/json'
+                    "Authorization": `token ${AppState.token}`,
+                    "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    message: "Actualización automática desde POS",
-                    content: contentBase64,
-                    sha: sha
+                    message: `Auto-sync: ${new Date().toISOString()}`,
+                    content: content,
+                    sha: sha || undefined
                 })
             });
 
-            if (!putRes.ok) {
-                const errData = await putRes.json();
-                throw new Error(errData.message || "Error al realizar el commit.");
+            if (response.ok) {
+                // ACTUALIZAR TIMESTAMP SOLO TRAS ÉXITO
+                AppState.data.config.lastUpdated = new Date().toISOString();
+                Storage.saveLocal();
+                
+                Utils.showToast("BD actualizada en la nube.", "success");
+                document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle" style="color:var(--color-success)"></i> En línea';
+                return true;
+            } else {
+                throw new Error("Fallo en commit");
             }
-
-            AppState.publishHistory.push(Date.now());
-            Utils.showToast("Cambios publicados. GitHub Pages puede tardar hasta 3 min en reflejar la actualización.", "success");
-            return true;
-        } catch (e) {
-            console.error(e);
-            Utils.showToast(e.message, "error");
+        } catch (error) {
+            console.error("Error al publicar:", error);
+            Utils.showToast("Error de sincronización.", "danger");
+            document.getElementById('sync-status').innerHTML = '<i class="fas fa-exclamation-triangle" style="color:var(--color-warning)"></i> Error Sync';
             return false;
         }
     }
 };
 
-// --- MÓDULO ALMACENAMIENTO ---
-const Storage = {
-    hasLocalData: () => !!localStorage.getItem(CONFIG.LOCAL_STORAGE_KEY),
-
-    loadLocal: () => {
-        try {
-            const raw = localStorage.getItem(CONFIG.LOCAL_STORAGE_KEY);
-            if (raw) {
-                const parsed = JSON.parse(raw);
-                // Asegurar que la estructura de sucursales exista (migración)
-                if (!parsed.config.branches) {
-                    parsed.config.branches = AppState.data.config.branches;
-                    parsed.config.activeBranchId = "farma1";
-                }
-                AppState.data = parsed;
-            }
-        } catch (e) {
-            console.error("Error parseando localStorage", e);
-        }
-    },
-
-    saveLocal: () => {
-        localStorage.setItem(CONFIG.LOCAL_STORAGE_KEY, JSON.stringify(AppState.data));
-        UI.updateSystemStatus();
-    },
-
-    async initDataFlow() {
-        const hasLocal = this.hasLocalData();
-        if (hasLocal) {
-            this.loadLocal();
-            document.getElementById('modal-sync').classList.add('active');
-        } else {
-            Utils.showToast("Primera ejecución o caché vacío. Descargando datos...", "info");
-            const remoteData = await API.fetchRemoteData();
-            if (remoteData) {
-                AppState.data = remoteData;
-                // Migrar si no tiene sucursales
-                if (!AppState.data.config.branches) {
-                    AppState.data.config.branches = [
-                        { id: "farma1", name: "FARMA 1 - BARUTA", rif: "J-00020200-1", address: "Av Los Guayabitos, CC Expreso Baruta. Nivel 5 Of Unica, Urb La Trinidad. Caracas.", phone: "0281-2780820", caja: "01" },
-                        { id: "farma2", name: "FARMA 2 - CHACAO", rif: "J-00020200-2", address: "Av. Francisco de Miranda, Centro Lido. Piso 2. Chacao.", phone: "0212-5554433", caja: "02" }
-                    ];
-                    AppState.data.config.activeBranchId = "farma1";
-                }
-                this.saveLocal();
-                UI.renderAll();
-                Utils.showToast("Base de datos sincronizada", "success");
-            } else {
-                Utils.showToast("Error fatal: No se pudo obtener la BD inicial", "error");
-                this.saveLocal();
-                UI.renderAll();
-            }
-        }
-    }
-};
-
-// --- MÓDULO NEGOCIO (POS & BD) ---
-const Business = {
-    addToCart(product, qty) {
-        if (product.suspended) {
-            Utils.showToast("Este producto está suspendido y no puede venderse.", "error");
-            return;
-        }
-        const existing = AppState.cart.find(i => i.id === product.id);
-        if (existing) existing.qty += qty;
-        else AppState.cart.push({ ...product, qty });
-    },
-    removeFromCart(id) {
-        AppState.cart = AppState.cart.filter(i => i.id !== id);
-    },
-    clearCart() {
-        AppState.cart = [];
-    },
-    calculateTotals(taxRate) {
-        let subG = 0, subE = 0;
-        AppState.cart.forEach(item => {
-            const line = item.price * item.qty;
-            if (item.tax === 'G') subG += line;
-            else subE += line;
-        });
-        const iva = subG * (taxRate / 100);
-        return { subG, subE, iva, total: subG + subE + iva };
-    },
-    generateInvoiceRecord(client, rif, taxRate) {
-        const { subG, subE, iva, total } = this.calculateTotals(taxRate);
-        const now = new Date();
-        // NÚMERO DE FACTURA DE 11 DÍGITOS
-        const invoiceNum = Utils.generatePad(AppState.data.config.lastInvoiceNumber, 11);
-        const record = {
-            numero: invoiceNum,
-            fecha: now.toLocaleDateString('es-VE'),
-            hora: now.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
-            cliente: client || 'CONSUMIDOR FINAL',
-            rif: rif || 'V-000000000',
-            tasaIva: taxRate,
-            subG, subE, iva, total,
-            items: AppState.cart.map(i => ({ id: i.id, name: i.name, qty: i.qty, price: i.price, tax: i.tax }))
-        };
-        AppState.data.invoices.unshift(record);
-        AppState.data.config.lastInvoiceNumber++;
-        Storage.saveLocal();  // guarda local pero NO actualiza lastUpdated (solo al publicar)
-        return record;
-    },
-    saveProduct(prodObj) {
-        const index = AppState.data.products.findIndex(p => p.id === prodObj.id);
-        if (index > -1) {
-            AppState.data.products[index] = { ...AppState.data.products[index], ...prodObj };
-        } else {
-            AppState.data.products.push({ ...prodObj, suspended: false });
-        }
-        Storage.saveLocal(); // no actualiza lastUpdated
-    },
-    deleteProduct(id) {
-        AppState.data.products = AppState.data.products.filter(p => p.id !== id);
-        Storage.saveLocal();
-    },
-    toggleProductStatus(id) {
-        const p = AppState.data.products.find(p => p.id === id);
-        if (p) {
-            p.suspended = !p.suspended;
-            Storage.saveLocal();
-        }
-    },
-    getActiveBranch() {
-        const activeId = AppState.data.config.activeBranchId;
-        return AppState.data.config.branches.find(b => b.id === activeId) || AppState.data.config.branches[0];
-    }
-};
-
-// --- INTERFAZ DE USUARIO ---
+// --- UI & LÓGICA DE NEGOCIO ---
 const UI = {
-    initListeners() {
-        // Auth File
-        document.getElementById('auth-file').addEventListener('change', this.handleAuthFile.bind(this));
-
-        // Navigation
-        document.querySelectorAll('.nav-btn[data-target]').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.nav-btn[data-target]').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
-                document.getElementById(btn.dataset.target).classList.add('active');
-            });
-        });
-
-        // Publish
-        document.getElementById('btn-publish-github').addEventListener('click', async (e) => {
-            const btn = e.currentTarget;
-            btn.disabled = true;
-            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> <span>Publicando...</span>`;
-            await API.publishData();
-            btn.disabled = false;
-            btn.innerHTML = `<i class="fas fa-cloud-upload-alt"></i> <span>Publicar</span>`;
-        });
-
-        // Sync Modal Logic
-        document.getElementById('btn-sync-local').addEventListener('click', () => {
-            Storage.loadLocal();
-            UI.closeModal('modal-sync');
-            UI.renderAll();
-            Utils.showToast("Cargando base de datos local", "info");
-        });
-        document.getElementById('btn-sync-remote').addEventListener('click', async () => {
-            UI.closeModal('modal-sync');
-            Utils.showToast("Descargando desde GitHub...", "info");
-            const remote = await API.fetchRemoteData();
-            if (remote) {
-                AppState.data = remote;
-                // Migrar sucursales si no existen
-                if (!AppState.data.config.branches) {
-                    AppState.data.config.branches = [
-                        { id: "farma1", name: "FARMA 1 - BARUTA", rif: "J-00020200-1", address: "Av Los Guayabitos, CC Expreso Baruta. Nivel 5 Of Unica, Urb La Trinidad. Caracas.", phone: "0281-2780820", caja: "01" },
-                        { id: "farma2", name: "FARMA 2 - CHACAO", rif: "J-00020200-2", address: "Av. Francisco de Miranda, Centro Lido. Piso 2. Chacao.", phone: "0212-5554433", caja: "02" }
-                    ];
-                    AppState.data.config.activeBranchId = "farma1";
-                }
-                Storage.saveLocal();
-                UI.renderAll();
-                Utils.showToast("Base de datos actualizada", "success");
-            } else {
-                Utils.showToast("Error al conectar. Usando copia local.", "error");
-                UI.renderAll();
-            }
-        });
-
-        // POS Autocomplete
-        const searchInput = document.getElementById('pos-search');
-        searchInput.addEventListener('input', (e) => this.handlePosSearch(e.target.value));
-        document.addEventListener('click', e => { if (!searchInput.contains(e.target)) document.getElementById('pos-suggestions').style.display = 'none'; });
-
-        // POS Actions
-        document.getElementById('btn-add-cart').addEventListener('click', () => this.handleAddToCart());
-        document.getElementById('btn-cancel-sale').addEventListener('click', () => {
-            Business.clearCart();
-            this.renderCart();
-            Utils.showToast("Venta cancelada", "info");
-        });
-        document.getElementById('btn-emit-invoice').addEventListener('click', () => this.handleEmitInvoice());
-
-        // DB Module Actions
-        document.getElementById('db-search').addEventListener('input', (e) => this.renderDBTable(e.target.value));
-        document.getElementById('btn-open-new-prod').addEventListener('click', () => {
-            document.getElementById('form-product').reset();
-            document.getElementById('form-prod-original-id').value = '';
-            document.getElementById('form-prod-id').disabled = false;
-            document.getElementById('modal-product-title').innerText = "Nuevo Producto";
-            document.getElementById('modal-product').classList.add('active');
-        });
-        document.getElementById('form-product').addEventListener('submit', this.handleSaveProduct.bind(this));
-
-        // --- SELECTOR DE SUCURSAL ---
-        const branchSelector = document.getElementById('branch-selector');
-        if (branchSelector) {
-            branchSelector.addEventListener('change', (e) => {
-                AppState.data.config.activeBranchId = e.target.value;
-                Storage.saveLocal();
-                Utils.showToast(`Sucursal cambiada a: ${e.target.options[e.target.selectedIndex].text}`, "info");
-                // No es necesario re-renderizar todo, pero el ticket usará la nueva sucursal
-            });
-        }
-    },
-
-    // --- MANEJADORES ---
-    handleAuthFile(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            try {
-                const creds = JSON.parse(ev.target.result);
-                if (creds.accessKey === CONFIG.AUTH_KEY && creds.githubToken) {
-                    AppState.token = creds.githubToken;
-                    document.getElementById('auth-screen').style.display = 'none';
-                    document.getElementById('app-screen').style.display = 'flex';
-                    Utils.showToast("Autenticación exitosa", "success");
-                    Storage.initDataFlow();
-                } else {
-                    Utils.showToast("Llave de seguridad inválida", "error");
-                }
-            } catch (err) {
-                Utils.showToast("Archivo corrupto o formato incorrecto", "error");
-            }
-            e.target.value = '';
-        };
-        reader.readAsText(file);
-    },
-
-    handlePosSearch(term) {
-        term = term.trim().toLowerCase();
-        const suggBox = document.getElementById('pos-suggestions');
-        if (!term) { suggBox.style.display = 'none'; return; }
-        const filtered = AppState.data.products
-            .filter(p => !p.suspended && (p.id.toLowerCase().includes(term) || p.name.toLowerCase().includes(term)))
-            .slice(0, 8);
-        if (filtered.length) {
-            suggBox.innerHTML = filtered.map(p => `
-                <li onclick="UI.selectSearchResult('${p.id}')">
-                    <span style="display:flex; flex-direction:column;">
-                        <strong style="color:var(--color-primary);">${p.id}</strong>
-                        <span>${Utils.escapeHtml(p.name)}</span>
-                    </span>
-                    <strong style="white-space:nowrap;">Bs ${Utils.formatCurrency(p.price)}</strong>
-                </li>
+    renderProducts(filter = "") {
+        const grid = document.getElementById('products-grid');
+        const term = filter.toLowerCase();
+        const html = AppState.data.products
+            .filter(p => p.name.toLowerCase().includes(term) || p.id.includes(term))
+            .map(p => `
+                <div class="product-card" onclick="POS.addToCart('${p.id}')">
+                    <div class="product-price">Bs ${Utils.formatCurrency(p.price)}</div>
+                    <div class="product-name">${p.name}</div>
+                    <div style="font-size: 0.8rem; color: #666; margin-top: 5px;"><i class="fas fa-barcode"></i> ${p.id}</div>
+                </div>
             `).join('');
-            suggBox.style.display = 'block';
-        } else {
-            suggBox.style.display = 'none';
-        }
-    },
-
-    selectSearchResult(id) {
-        const p = AppState.data.products.find(p => p.id === id);
-        if (p) {
-            document.getElementById('pos-search').value = p.id;
-            AppState.selectedProductTemp = p;
-        }
-        document.getElementById('pos-suggestions').style.display = 'none';
-        document.getElementById('pos-qty').focus();
-    },
-
-    handleAddToCart() {
-        const searchVal = document.getElementById('pos-search').value.trim();
-        let prod = AppState.selectedProductTemp;
-        if (!prod || prod.id !== searchVal) {
-            prod = AppState.data.products.find(p => p.id === searchVal && !p.suspended);
-            if (!prod) {
-                Utils.showToast("Producto no encontrado o suspendido", "error");
-                return;
-            }
-        }
-        const qty = parseInt(document.getElementById('pos-qty').value);
-        if (isNaN(qty) || qty <= 0) return;
-        Business.addToCart(prod, qty);
-        AppState.selectedProductTemp = null;
-        document.getElementById('pos-search').value = '';
-        document.getElementById('pos-qty').value = '1';
-        document.getElementById('pos-search').focus();
-        this.renderCart();
-    },
-
-    handleEmitInvoice() {
-        if (!AppState.cart.length) {
-            Utils.showToast("El ticket está vacío", "warning");
-            return;
-        }
-        const client = document.getElementById('pos-client-name').value.trim().toUpperCase();
-        const rif = document.getElementById('pos-client-rif').value.trim().toUpperCase();
-        const taxRate = AppState.data.config.defaultTaxRate || 12;
-        const record = Business.generateInvoiceRecord(client, rif, taxRate);
-        this.fillPrintTicket(record, false);
-        window.print();
-        Business.clearCart();
-        this.renderCart();
-        this.renderHistory();
-        this.updateSystemStatus();
-        document.getElementById('pos-client-name').value = 'Consumidor Final';
-        document.getElementById('pos-client-rif').value = 'V-000000000';
-    },
-
-    handleSaveProduct(e) {
-        e.preventDefault();
-        const origId = document.getElementById('form-prod-original-id').value;
-        const newId = document.getElementById('form-prod-id').value.trim();
-        if ((origId === '' || origId !== newId) && AppState.data.products.find(p => p.id === newId)) {
-            Utils.showToast("El Código SKU ya existe en la base de datos.", "error");
-            return;
-        }
-        const prod = {
-            id: newId,
-            name: document.getElementById('form-prod-name').value.trim().toUpperCase(),
-            price: parseFloat(document.getElementById('form-prod-price').value),
-            tax: document.getElementById('form-prod-tax').value,
-            stockMin: 0
-        };
-        if (origId && origId !== newId) {
-            const oldProd = AppState.data.products.find(p => p.id === origId);
-            if (oldProd) prod.suspended = oldProd.suspended;
-            Business.deleteProduct(origId);
-        }
-        Business.saveProduct(prod);
-        this.closeModal('modal-product');
-        this.renderDBTable();
-        Utils.showToast("Producto guardado", "success");
-    },
-
-    // --- RENDERIZADO ---
-    renderAll() {
-        this.updateSystemStatus();
-        this.renderCart();
-        this.renderHistory();
-        this.renderDBTable();
-        this.populateBranchSelector(); // llenar select de sucursales
-    },
-
-    populateBranchSelector() {
-        const selector = document.getElementById('branch-selector');
-        if (!selector) return;
-        const branches = AppState.data.config.branches || [];
-        selector.innerHTML = '';
-        branches.forEach(branch => {
-            const option = document.createElement('option');
-            option.value = branch.id;
-            option.textContent = branch.name;
-            if (branch.id === AppState.data.config.activeBranchId) option.selected = true;
-            selector.appendChild(option);
-        });
-    },
-
-    updateSystemStatus() {
-        document.getElementById('sys-last-update').innerText = AppState.data.config.lastUpdated
-            ? new Date(AppState.data.config.lastUpdated).toLocaleString('es-VE')
-            : 'Nunca';
-        document.getElementById('sys-next-ticket').innerText = Utils.generatePad(AppState.data.config.lastInvoiceNumber, 11);
-        document.getElementById('pos-display-tax').innerText = AppState.data.config.defaultTaxRate || 12;
+        grid.innerHTML = html;
     },
 
     renderCart() {
-        const container = document.getElementById('cart-items-container');
-        if (!AppState.cart.length) {
-            container.innerHTML = '<div style="color:var(--color-text-muted); text-align:center; margin-top:20px;">No hay artículos</div>';
-        } else {
-            container.innerHTML = AppState.cart.map(item => `
-                <div class="list-item cart-item">
-                    <div class="item-details" style="flex:1;">
-                        <strong>${Utils.escapeHtml(item.name)}</strong>
-                        <span style="color:var(--color-text-muted); font-size:0.75rem;">${item.id} | Imp: ${item.tax}</span>
+        const container = document.getElementById('cart-items');
+        let subG = 0, subE = 0, iva = 0;
+        
+        container.innerHTML = AppState.cart.map((item, index) => {
+            const itemTotal = item.price * item.qty;
+            if (item.tax === "G") {
+                subG += itemTotal;
+            } else {
+                subE += itemTotal;
+            }
+            return `
+                <div class="cart-item">
+                    <div class="item-info">
+                        <strong>${item.name}</strong>
+                        <div>Bs ${Utils.formatCurrency(item.price)} (Imp: ${item.tax})</div>
                     </div>
-                    <div style="margin: 0 16px; text-align:center;">
-                        <div style="font-weight:700;">x${item.qty}</div>
-                        <div style="font-size:0.7rem; color:var(--color-text-muted);">Bs ${Utils.formatCurrency(item.price)} c/u</div>
+                    <div class="item-actions">
+                        <button class="btn btn-sm" onclick="POS.updateQty(${index}, -1)"><i class="fas fa-minus"></i></button>
+                        <span>${item.qty}</span>
+                        <button class="btn btn-sm" onclick="POS.updateQty(${index}, 1)"><i class="fas fa-plus"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="POS.removeFromCart(${index})"><i class="fas fa-trash"></i></button>
                     </div>
-                    <div class="item-price" style="width: 80px;">Bs ${Utils.formatCurrency(item.qty * item.price)}</div>
-                    <button class="btn-icon delete" onclick="UI.removeCartItem('${item.id}')" style="margin-left: 8px;"><i class="fas fa-trash"></i></button>
                 </div>
-            `).join('');
-        }
-        const taxRate = AppState.data.config.defaultTaxRate || 12;
-        const { subG, subE, iva, total } = Business.calculateTotals(taxRate);
+            `;
+        }).join('');
+
+        iva = subG * (AppState.data.config.defaultTaxRate / 100);
+        const total = subG + subE + iva;
+
         document.getElementById('cart-subg').innerText = `Bs ${Utils.formatCurrency(subG)}`;
         document.getElementById('cart-sube').innerText = `Bs ${Utils.formatCurrency(subE)}`;
         document.getElementById('cart-iva').innerText = `Bs ${Utils.formatCurrency(iva)}`;
         document.getElementById('cart-total').innerText = `Bs ${Utils.formatCurrency(total)}`;
     },
 
-    removeCartItem(id) {
-        Business.removeFromCart(id);
-        this.renderCart();
-    },
-
-    renderHistory() {
-        const list = document.getElementById('history-list');
-        if (!AppState.data.invoices.length) {
-            list.innerHTML = '<div style="padding:10px; color:var(--color-text-muted);">Sin transacciones.</div>';
-            return;
-        }
-        list.innerHTML = AppState.data.invoices.slice(0, 20).map(inv => `
-            <div class="list-item history-item" onclick="UI.showInvoiceDetail('${inv.numero}')">
-                <div class="item-details">
-                    <strong style="color:var(--color-primary);">#${inv.numero}</strong>
-                    <span>${Utils.escapeHtml(inv.cliente)}</span>
-                    <span style="color:var(--color-text-muted); font-size:0.7rem;">${inv.fecha} ${inv.hora}</span>
-                </div>
-                <div class="item-price" style="color:var(--color-success);">Bs ${Utils.formatCurrency(inv.total)}</div>
-            </div>
-        `).join('');
-    },
-
-    renderDBTable(filterTerm = '') {
-        const tbody = document.getElementById('db-table-body');
-        let products = AppState.data.products;
-        if (filterTerm) {
-            const term = filterTerm.toLowerCase();
-            products = products.filter(p => p.id.toLowerCase().includes(term) || p.name.toLowerCase().includes(term));
-        }
-        tbody.innerHTML = products.map(p => `
-            <tr>
-                <td><strong>${p.id}</strong></td>
-                <td>${Utils.escapeHtml(p.name)}</td>
-                <td>Bs ${Utils.formatCurrency(p.price)}</td>
-                <td><span class="badge ${p.tax === 'G' ? 'badge-g' : 'badge-e'}">${p.tax}</span></td>
-                <td><span class="badge ${p.suspended ? 'badge-suspended' : 'badge-active'}">${p.suspended ? 'Suspendido' : 'Activo'}</span></td>
-                <td style="text-align:right;">
-                    <div class="actions-cell" style="justify-content: flex-end;">
-                        <button class="btn-icon" onclick="UI.editProduct('${p.id}')" title="Editar"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon" onclick="Business.toggleProductStatus('${p.id}'); UI.renderDBTable('${document.getElementById('db-search').value.replace(/'/g, "\\'")}');" title="${p.suspended ? 'Activar' : 'Suspender'}">
-                            <i class="fas ${p.suspended ? 'fa-play' : 'fa-pause'}" style="color:${p.suspended ? 'var(--color-success)' : 'var(--color-warning)'}"></i>
-                        </button>
-                        <button class="btn-icon delete" onclick="if(confirm('¿Eliminar producto definitivamente?')) { Business.deleteProduct('${p.id}'); UI.renderDBTable('${document.getElementById('db-search').value.replace(/'/g, "\\'")}'); }" title="Eliminar"><i class="fas fa-trash-alt"></i></button>
-                    </div>
-                </td>
-            </tr>
-        `).join('');
-    },
-
-    editProduct(id) {
-        const p = AppState.data.products.find(x => x.id === id);
-        if (!p) return;
-        document.getElementById('form-prod-original-id').value = p.id;
-        document.getElementById('form-prod-id').value = p.id;
-        document.getElementById('form-prod-id').disabled = true;
-        document.getElementById('form-prod-name').value = p.name;
-        document.getElementById('form-prod-price').value = p.price;
-        document.getElementById('form-prod-tax').value = p.tax;
-        document.getElementById('modal-product-title').innerText = "Editar Producto";
-        document.getElementById('modal-product').classList.add('active');
-    },
-
-    showInvoiceDetail(numero) {
-        const inv = AppState.data.invoices.find(i => i.numero === numero);
-        if (!inv) return;
-        document.getElementById('inv-det-num').innerText = `#${inv.numero}`;
-        document.getElementById('inv-det-cli').innerText = inv.cliente;
-        document.getElementById('inv-det-rif').innerText = inv.rif;
-        document.getElementById('inv-det-date').innerText = `${inv.fecha} ${inv.hora}`;
-        document.getElementById('inv-det-items').innerHTML = inv.items.map(item => `
-            <tr>
-                <td>${item.qty}</td>
-                <td>${Utils.escapeHtml(item.name)} <br><span style="font-size:0.7rem;color:#666;">${item.id} (${item.tax})</span></td>
-                <td style="text-align:right;">Bs ${Utils.formatCurrency(item.qty * item.price)}</td>
-            </tr>
-        `).join('');
-        document.getElementById('inv-det-total').innerText = `Bs ${Utils.formatCurrency(inv.total)}`;
-        const btnReprint = document.getElementById('btn-reprint-invoice');
-        btnReprint.onclick = () => {
-            this.fillPrintTicket(inv, true);
-            window.print();
+    // IMPRESIÓN Y ARMADO DE TICKET (NUEVO FORMATO FISCAL)
+    fillPrintTicket(inv, isReprint = false) {
+        // Obtener datos de la sucursal activa o usar defaults seguros
+        const branch = AppState.activeBranch || {
+            commercialName: "FARMATODO, C.A.",
+            rif: "RIF-L-000000000",
+            address: "",
+            phone: "",
+            boxNumber: "01",
+            footerMessage: ""
         };
-        document.getElementById('modal-invoice').classList.add('active');
-    },
 
-    // NUEVA FUNCIÓN fillPrintTicket CON FORMATO SEHR!
-    fillPrintTicket(inv, isReprint) {
-        const branch = Business.getActiveBranch();
-        const ticketHTML = `
-            <div class="ticket">
-                <div class="ticket-center"><strong>SEHR!</strong></div>
-                <div class="ticket-left">RIF-L-000022001</div>
-                <div class="ticket-left"><strong>KARHUTODO, C.R.A. Barutra</strong></div>
-                <div class="ticket-left">Geburtshaus: 05.07.2019 Uhr in Ta' Jirindel</div>
-                <div class="ticket-left"><strong>SENTI</strong></div>
-                <div class="ticket-left">${branch.address}</div>
-                <div class="ticket-left">Teléfono: ${branch.phone}</div>
-                <div class="divider"></div>
-                <div class="ticket-left">Cliente: ${inv.cliente}</div>
-                <div class="ticket-left">RIF/CI: ${inv.rif}</div>
-                <div class="divider"></div>
-                <div class="ticket-center"><strong>FACTURA ${isReprint ? '(COPIA)' : ''}</strong></div>
-                <div class="ticket-grid" style="display:flex; justify-content:space-between;">
-                    <span>NÚMERO: ${inv.numero}</span>
-                    <span>HORA: ${inv.hora}</span>
-                </div>
-                <div class="ticket-left">FECHA: ${inv.fecha}</div>
-                <div class="divider"></div>
-                <table class="items-table">
-                    <tbody>
-                        ${inv.items.map(item => `
-                            <tr>
-                                <td class="col-desc">${item.qty} x ${Utils.escapeHtml(item.name)} (${item.tax})</td>
-                                <td class="col-price">Bs ${Utils.formatCurrency(item.price * item.qty)}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-                <div class="divider"></div>
-                <div class="totals-section">
-                    <div class="totals-row"><span>BI G (${inv.tasaIva}%)</span><span>Bs ${Utils.formatCurrency(inv.subG)}</span></div>
-                    <div class="totals-row"><span>IVA G (${inv.tasaIva}%)</span><span>Bs ${Utils.formatCurrency(inv.iva)}</span></div>
-                    <div class="totals-row"><span>EXENTO (E)</span><span>Bs ${Utils.formatCurrency(inv.subE)}</span></div>
-                    <div class="thick-divider"></div>
-                    <div class="totals-row total-final"><span>TOTAL</span><span>Bs ${Utils.formatCurrency(inv.total)}</span></div>
-                    <div class="totals-row"><span>EFECTIVO</span><span>Bs ${Utils.formatCurrency(inv.total)}</span></div>
-                </div>
-                <div class="divider"></div>
-                <div class="ticket-left">CATALOGUE: 13707764</div>
-                <div class="ticket-left">PAGINA: 1/1</div>
-                <div class="ticket-left">${Utils.getAllStaticISBNs().join('<br>')}</div>
-                <div class="divider"></div>
-                <div class="ticket-center">
-                    <svg id="barcode" style="width:100%; height:35px; margin-top:5px;"></svg>
-                </div>
-                <div class="ticket-center">Gracias por su compra</div>
-            </div>
-        `;
-        const printContainer = document.getElementById('print-container');
-        printContainer.innerHTML = ticketHTML;
-        // Generar código de barras con número de factura (11 dígitos, sin #)
-        JsBarcode(document.getElementById('barcode'), inv.numero, {
-            format: "CODE128",
-            width: 2,
-            height: 35,
-            displayValue: false,
-            margin: 0
+        // Llenar Cabecera de Sucursal
+        document.getElementById('t-commercial-name').innerText = branch.commercialName;
+        document.getElementById('t-rif').innerText = branch.rif;
+        document.getElementById('t-address').innerText = branch.address;
+        document.getElementById('t-phone').innerText = branch.phone;
+        document.getElementById('t-box-num').innerText = branch.boxNumber;
+        document.getElementById('t-footer').innerText = branch.footerMessage;
+
+        // Llenar Datos de Factura
+        document.getElementById('t-invoice-num').innerText = inv.numero;
+        document.getElementById('t-date').innerText = inv.fecha;
+        document.getElementById('t-time').innerText = inv.hora;
+        
+        document.getElementById('t-reprint-mark').style.display = isReprint ? 'block' : 'none';
+
+        // Llenar Ítems
+        const tItemsBody = document.getElementById('t-items');
+        tItemsBody.innerHTML = inv.items.map(item => `
+            <tr>
+                <td class="col-desc">${item.name} (${item.id})<br>${item.qty} x Bs ${Utils.formatCurrency(item.price)} (${item.tax})</td>
+                <td class="col-price">Bs ${Utils.formatCurrency(item.price * item.qty)}</td>
+            </tr>
+        `).join('');
+
+        // Llenar Totales
+        const tr = inv.tasaIva.toFixed(2);
+        document.getElementById('t-tax-rate').innerText = tr;
+        document.getElementById('t-tax-rate2').innerText = tr;
+        
+        document.getElementById('t-bi').innerText = Utils.formatCurrency(inv.subG);
+        document.getElementById('t-iva').innerText = Utils.formatCurrency(inv.iva);
+        document.getElementById('t-exe').innerText = Utils.formatCurrency(inv.subE);
+        document.getElementById('t-total').innerText = Utils.formatCurrency(inv.total);
+        document.getElementById('t-efectivo').innerText = Utils.formatCurrency(inv.total);
+
+        // Generar Código de Barras
+        // Formato CODE128, altura 60px (~15mm en impresión térmica dependiendo de DPI), sin texto inferior, ocupa 100% de la caja visual.
+        JsBarcode(document.getElementById('barcode'), inv.numero, { 
+            format: "CODE128", 
+            width: 2, 
+            height: 60, 
+            displayValue: false, 
+            margin: 0 
         });
     },
 
-    closeModal(id) {
-        document.getElementById(id).classList.remove('active');
+    printTicket() {
+        window.print();
+    }
+};
+
+const POS = {
+    addToCart(id) {
+        const prod = AppState.data.products.find(p => p.id === id);
+        if (!prod) return;
+        const exist = AppState.cart.find(i => i.id === id);
+        if (exist) {
+            exist.qty++;
+        } else {
+            AppState.cart.push({ ...prod, qty: 1 });
+        }
+        UI.renderCart();
+    },
+    updateQty(index, dir) {
+        AppState.cart[index].qty += dir;
+        if (AppState.cart[index].qty <= 0) {
+            AppState.cart.splice(index, 1);
+        }
+        UI.renderCart();
+    },
+    removeFromCart(index) {
+        AppState.cart.splice(index, 1);
+        UI.renderCart();
+    },
+    async processCheckout() {
+        if (AppState.cart.length === 0) {
+            Utils.showToast("El carrito está vacío", "warning");
+            return;
+        }
+
+        let subG = 0, subE = 0;
+        AppState.cart.forEach(item => {
+            if (item.tax === "G") subG += (item.price * item.qty);
+            else subE += (item.price * item.qty);
+        });
+
+        const iva = subG * (AppState.data.config.defaultTaxRate / 100);
+        const total = subG + subE + iva;
+
+        // Generar Factura
+        const invoiceNum = String(AppState.data.config.lastInvoiceNumber).padStart(8, '0');
+        const now = new Date();
+        
+        const invoice = {
+            numero: invoiceNum,
+            fecha: now.toLocaleDateString('es-VE'),
+            hora: now.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+            cliente: "CONSUMIDOR FINAL",
+            rif: "V-000000000",
+            items: [...AppState.cart],
+            subG: subG,
+            subE: subE,
+            tasaIva: AppState.data.config.defaultTaxRate,
+            iva: iva,
+            total: total
+        };
+
+        // Guardar
+        AppState.data.invoices.push(invoice);
+        AppState.data.config.lastInvoiceNumber++;
+        Storage.saveLocal();
+
+        // Imprimir y Limpiar
+        UI.fillPrintTicket(invoice, false);
+        UI.printTicket();
+        
+        AppState.cart = [];
+        UI.renderCart();
+
+        // Intentar publicar silenciosamente (la regla de los 5 min bloqueará esto si no ha pasado el tiempo)
+        API.publishData();
     }
 };
 
 // --- INICIALIZACIÓN ---
 document.addEventListener('DOMContentLoaded', () => {
-    UI.initListeners();
+    // 1. Manejo de archivo JSON (Autenticación)
+    document.getElementById('auth-file').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const keys = JSON.parse(ev.target.result);
+                if (keys.accessKey === CONFIG.AUTH_KEY && keys.githubToken) {
+                    AppState.token = keys.githubToken;
+                    document.getElementById('auth-screen').style.display = 'none';
+                    document.getElementById('app-screen').style.display = 'flex';
+                    AppInit();
+                } else {
+                    alert("Llave inválida.");
+                }
+            } catch(err) {
+                alert("Error procesando el archivo de llaves.");
+            }
+        };
+        reader.readAsText(file);
+    });
 });
+
+async function AppInit() {
+    // Cargar datos locales primero para una visualización rápida
+    Storage.loadLocal();
+    
+    // Iniciar Gestión de Sucursales ANTES del renderizado
+    BranchManager.init();
+
+    UI.renderProducts();
+
+    // Sincronizar en segundo plano
+    const remoteSuccess = await API.fetchRemoteData();
+    if (remoteSuccess) {
+        BranchManager.init(); // Re-iniciar en caso de que la BD remota traiga cambios en ramas
+        UI.renderProducts();
+        document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle" style="color:var(--color-success)"></i> En línea';
+    } else {
+        document.getElementById('sync-status').innerHTML = '<i class="fas fa-exclamation-triangle" style="color:var(--color-warning)"></i> Modo Local';
+        Utils.showToast("Trabajando de forma local. Revise su conexión.", "warning");
+    }
+
+    // Eventos UI
+    document.getElementById('search-input').addEventListener('input', (e) => UI.renderProducts(e.target.value));
+    document.getElementById('btn-checkout').addEventListener('click', POS.processCheckout);
+    document.getElementById('btn-sync').addEventListener('click', API.publishData);
+}
